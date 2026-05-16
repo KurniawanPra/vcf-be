@@ -1,0 +1,984 @@
+{
+	"info": {
+		"_postman_id": "66e04f20-4eeb-4b51-856d-893b911c096f",
+		"name": "VCF System API — PT. Industri Nabati Lestari",
+		"description": "Vehicle Control Form (VCF) API collection for Frontend Integration.\n\n**Credentials:**\n- Admin: admin / password\n- Petugas: petugas / password\n\n**Common Query Params:**\n- `search`: Search by name/code/police number\n- `is_active`: Filter by status (1/0)\n- `per_page`: Pagination limit (default: 15)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Login as Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.token) {",
+									"    pm.collectionVariables.set('token', json.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"password\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+					}
+				},
+				{
+					"name": "Login as Petugas",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.token) {",
+									"    pm.collectionVariables.set('token', json.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"petugas\",\n    \"password\": \"password\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+					}
+				},
+				{
+					"name": "Get Current User (Me)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] }
+					}
+				},
+				{
+					"name": "Dashboard Stats",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/dashboard/stats", "host": ["{{base_url}}"], "path": ["dashboard", "stats"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "📋 Master Data",
+			"item": [
+				{
+					"name": "Users",
+					"item": [
+						{
+							"name": "List Users",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": {
+									"raw": "{{base_url}}/master/users?search=&role=&is_active=",
+									"host": ["{{base_url}}"],
+									"path": ["master", "users"],
+									"query": [
+										{ "key": "search", "value": "", "description": "Search by name or username" },
+										{ "key": "role", "value": "", "description": "Filter by role: admin|petugas" },
+										{ "key": "is_active", "value": "", "description": "Filter by status: 1|0" }
+									]
+								}
+							}
+						},
+						{
+							"name": "Get User Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["master", "users", "{{user_id}}"] }
+							}
+						},
+						{
+							"name": "Create User",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama\": \"Petugas Baru\",\n    \"username\": \"petugas_baru\",\n    \"password\": \"password\",\n    \"password_confirmation\": \"password\",\n    \"role\": \"petugas\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/users", "host": ["{{base_url}}"], "path": ["master", "users"] }
+							}
+						},
+						{
+							"name": "Update User",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama\": \"Petugas Updated\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["master", "users", "{{user_id}}"] }
+							}
+						},
+						{
+							"name": "Reset Password",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"password\": \"newpassword\",\n    \"password_confirmation\": \"newpassword\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/users/{{user_id}}/reset-password", "host": ["{{base_url}}"], "path": ["master", "users", "{{user_id}}", "reset-password"] }
+							}
+						},
+						{
+							"name": "Delete User",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["master", "users", "{{user_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Transporters",
+					"item": [
+						{
+							"name": "List Transporters",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": {
+									"raw": "{{base_url}}/master/transporters?search=&is_active=",
+									"host": ["{{base_url}}"],
+									"path": ["master", "transporters"],
+									"query": [
+										{ "key": "search", "value": "" },
+										{ "key": "is_active", "value": "" }
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Transporter Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/transporters/{{transporter_id}}", "host": ["{{base_url}}"], "path": ["master", "transporters", "{{transporter_id}}"] }
+							}
+						},
+						{
+							"name": "Create Transporter",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama_transporter\": \"PT. Logistik Maju\",\n    \"kode\": \"LMJ\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/transporters", "host": ["{{base_url}}"], "path": ["master", "transporters"] }
+							}
+						},
+						{
+							"name": "Update Transporter",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama_transporter\": \"PT. Logistik Maju Updated\",\n    \"kode\": \"LMJU\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/transporters/{{transporter_id}}", "host": ["{{base_url}}"], "path": ["master", "transporters", "{{transporter_id}}"] }
+							}
+						},
+						{
+							"name": "Delete Transporter",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/transporters/{{transporter_id}}", "host": ["{{base_url}}"], "path": ["master", "transporters", "{{transporter_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Drivers",
+					"item": [
+						{
+							"name": "List Drivers",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": {
+									"raw": "{{base_url}}/master/drivers?search=&transporter_id=&is_active=",
+									"host": ["{{base_url}}"],
+									"path": ["master", "drivers"],
+									"query": [
+										{ "key": "search", "value": "", "description": "Search by name or SIM" },
+										{ "key": "transporter_id", "value": "", "description": "Filter by transporter ID" },
+										{ "key": "is_active", "value": "", "description": "Filter by status" }
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Driver Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/drivers/{{driver_id}}", "host": ["{{base_url}}"], "path": ["master", "drivers", "{{driver_id}}"] }
+							}
+						},
+						{
+							"name": "Create Driver",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama_supir\": \"Supir Baru\",\n    \"no_sim\": \"SIM12345678\",\n    \"jenis_sim\": \"BII\",\n    \"tgl_berlaku_sim\": \"2030-01-01\",\n    \"transporter_id\": 1,\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/drivers", "host": ["{{base_url}}"], "path": ["master", "drivers"] }
+							}
+						},
+						{
+							"name": "Update Driver",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama_supir\": \"Supir Updated\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/drivers/{{driver_id}}", "host": ["{{base_url}}"], "path": ["master", "drivers", "{{driver_id}}"] }
+							}
+						},
+						{
+							"name": "Delete Driver",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/drivers/{{driver_id}}", "host": ["{{base_url}}"], "path": ["master", "drivers", "{{driver_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Jenis Kendaraan",
+					"item": [
+						{
+							"name": "List Jenis Kendaraan",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/jenis-kendaraan", "host": ["{{base_url}}"], "path": ["master", "jenis-kendaraan"] }
+							}
+						},
+						{
+							"name": "Get Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/jenis-kendaraan/{{jenis_kendaraan_id}}", "host": ["{{base_url}}"], "path": ["master", "jenis-kendaraan", "{{jenis_kendaraan_id}}"] }
+							}
+						},
+						{
+							"name": "Create",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama\": \"Truk Gandeng\",\n    \"kode\": \"GND\",\n    \"urutan\": 10,\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/jenis-kendaraan", "host": ["{{base_url}}"], "path": ["master", "jenis-kendaraan"] }
+							}
+						},
+						{
+							"name": "Update",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama\": \"Truk Gandeng Updated\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/jenis-kendaraan/{{jenis_kendaraan_id}}", "host": ["{{base_url}}"], "path": ["master", "jenis-kendaraan", "{{jenis_kendaraan_id}}"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/jenis-kendaraan/{{jenis_kendaraan_id}}", "host": ["{{base_url}}"], "path": ["master", "jenis-kendaraan", "{{jenis_kendaraan_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Logistik",
+					"item": [
+						{
+							"name": "List Logistik",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/logistik", "host": ["{{base_url}}"], "path": ["master", "logistik"] }
+							}
+						},
+						{
+							"name": "Create",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama\": \"Loading Lokal\",\n    \"kode\": \"LL\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/logistik", "host": ["{{base_url}}"], "path": ["master", "logistik"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/logistik/{{logistik_id}}", "host": ["{{base_url}}"], "path": ["master", "logistik", "{{logistik_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Produk",
+					"item": [
+						{
+							"name": "List Produk",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/produk", "host": ["{{base_url}}"], "path": ["master", "produk"] }
+							}
+						},
+						{
+							"name": "Create",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama\": \"CPO\",\n    \"kode\": \"CPO\",\n    \"nomor_urut\": 1,\n    \"warna_nomor_urut\": \"red\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/produk", "host": ["{{base_url}}"], "path": ["master", "produk"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/produk/{{produk_id}}", "host": ["{{base_url}}"], "path": ["master", "produk", "{{produk_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Item Kelengkapan Supir",
+					"item": [
+						{
+							"name": "List Items",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-kelengkapan-supir", "host": ["{{base_url}}"], "path": ["master", "item-kelengkapan-supir"] }
+							}
+						},
+						{
+							"name": "Create",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nama_item\": \"Helm Safety\",\n    \"is_active\": true\n}"
+								},
+								"url": { "raw": "{{base_url}}/master/item-kelengkapan-supir", "host": ["{{base_url}}"], "path": ["master", "item-kelengkapan-supir"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-kelengkapan-supir/{{item_id}}", "host": ["{{base_url}}"], "path": ["master", "item-kelengkapan-supir", "{{item_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Item Muatan",
+					"item": [
+						{
+							"name": "List Items",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-muatan", "host": ["{{base_url}}"], "path": ["master", "item-muatan"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-muatan/{{item_muatan_id}}", "host": ["{{base_url}}"], "path": ["master", "item-muatan", "{{item_muatan_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Item Pemeriksaan Masuk",
+					"item": [
+						{
+							"name": "List Items",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-pemeriksaan-masuk", "host": ["{{base_url}}"], "path": ["master", "item-pemeriksaan-masuk"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-pemeriksaan-masuk/{{item_pemeriksaan_masuk_id}}", "host": ["{{base_url}}"], "path": ["master", "item-pemeriksaan-masuk", "{{item_pemeriksaan_masuk_id}}"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Item Pemeriksaan Keluar",
+					"item": [
+						{
+							"name": "List Items",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-pemeriksaan-keluar", "host": ["{{base_url}}"], "path": ["master", "item-pemeriksaan-keluar"] }
+							}
+						},
+						{
+							"name": "Delete",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "DELETE",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/master/item-pemeriksaan-keluar/{{item_pemeriksaan_keluar_id}}", "host": ["{{base_url}}"], "path": ["master", "item-pemeriksaan-keluar", "{{item_pemeriksaan_keluar_id}}"] }
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "⚙️ Settings",
+			"item": [
+				{
+					"name": "Get All Settings",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/settings", "host": ["{{base_url}}"], "path": ["settings"] }
+					}
+				},
+				{
+					"name": "Get Public Settings",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/settings/public", "host": ["{{base_url}}"], "path": ["settings", "public"] }
+					}
+				},
+				{
+					"name": "Get VCF Settings",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/settings/vcf", "host": ["{{base_url}}"], "path": ["settings", "vcf"] }
+					}
+				},
+				{
+					"name": "Get Print Settings",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/settings/print", "host": ["{{base_url}}"], "path": ["settings", "print"] }
+					}
+				},
+				{
+					"name": "Get Setting by Key",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": { "raw": "{{base_url}}/settings/{{setting_key}}", "host": ["{{base_url}}"], "path": ["settings", "{{setting_key}}"] }
+					}
+				},
+				{
+					"name": "Update Setting (Admin)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"value\": \"true\",\n    \"is_active\": true\n}"
+						},
+						"url": { "raw": "{{base_url}}/settings/{{setting_key}}", "host": ["{{base_url}}"], "path": ["settings", "{{setting_key}}"] }
+					}
+				},
+				{
+					"name": "Update Batch Settings (Admin)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"settings\": [\n        { \"key\": \"vcf.show_produk_lainnya\", \"value\": \"true\" },\n        { \"key\": \"print.company_name\", \"value\": \"PT. INDUSTRI NABATI LESTARI\" }\n    ]\n}"
+						},
+						"url": { "raw": "{{base_url}}/settings/batch", "host": ["{{base_url}}"], "path": ["settings", "batch"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "📦 VCF Transaksi",
+			"item": [
+				{
+					"name": "Get Next Nomor Urut",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/vcf/next-number?tanggal=2026-05-10",
+							"host": ["{{base_url}}"],
+							"path": ["vcf", "next-number"],
+							"query": [{ "key": "tanggal", "value": "2026-05-10" }]
+						}
+					}
+				},
+				{
+					"name": "List VCF (Dashboard / Monitoring)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/vcf?search=&status=&tanggal=",
+							"host": ["{{base_url}}"],
+							"path": ["vcf"],
+							"query": [
+								{ "key": "search", "value": "", "description": "No. Polisi atau No. Urut" },
+								{ "key": "status", "value": "", "description": "bagian1_selesai | bagian2_selesai | bagian3_selesai | selesai | ditolak" },
+								{ "key": "tanggal", "value": "", "description": "YYYY-MM-DD" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Step 1: Main Gate Masuk",
+					"item": [
+						{
+							"name": "Create VCF (Step 1)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var json = pm.response.json();",
+											"if (json.data && json.data.id) {",
+											"    pm.collectionVariables.set('vcf_id', json.data.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"tanggal\": \"2026-05-10\",\n    \"produk\": \"CPO\",\n    \"tipe_kegiatan\": \"loading_lokal\",\n    \"asal_tujuan\": \"Medan\",\n    \"jenis_kendaraan_id\": 1,\n    \"no_polisi\": \"BK 1234 XY\",\n    \"tipe_kendaraan\": \"Truk Tangki\",\n    \"tahun_kendaraan\": 2020,\n    \"transporter_id\": 1,\n    \"driver_id\": 1,\n    \"jam_masuk\": \"08:00\",\n    \"keterangan\": \"Keterangan tambahan\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf", "host": ["{{base_url}}"], "path": ["vcf"] }
+							}
+						},
+						{
+							"name": "Get Step 1 Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}"] }
+							}
+						},
+						{
+							"name": "Update Step 1",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"no_polisi\": \"BK 9999 ZZ\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}"] }
+							}
+						},
+						{
+							"name": "Reject at Step 1",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"catatan_reject\": \"Data tidak lengkap\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/reject", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "reject"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Step 2: Weighbridge Masuk",
+					"item": [
+						{
+							"name": "Get Step 2 Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian2", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian2"] }
+							}
+						},
+						{
+							"name": "Submit Step 2",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"pemeriksaan\": [\n        { \"item_id\": 1, \"nilai\": \"Bagus\", \"keterangan\": null }\n    ],\n    \"jenis_beban\": \"Pallet\",\n    \"segel_terpasang\": true,\n    \"jumlah_segel\": 1,\n    \"nomor_segel\": [\"SGL-001\"],\n    \"keterangan\": \"Keterangan tambahan\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian2", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian2"] }
+							}
+						},
+						{
+							"name": "Update Step 2",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"jenis_beban\": \"Pallet Updated\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian2", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian2"] }
+							}
+						},
+						{
+							"name": "Reject at Step 2",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"catatan_reject\": \"Tangki bocor\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian2/reject", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian2", "reject"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Step 3: Weighbridge Keluar",
+					"item": [
+						{
+							"name": "Get Step 3 Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian3", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian3"] }
+							}
+						},
+						{
+							"name": "Submit Step 3",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"pemeriksaan\": [\n        { \"item_id\": 1, \"nilai\": \"Bersih\", \"keterangan\": null }\n    ],\n    \"jenis_beban\": \"Pallet\",\n    \"segel_terpasang\": true,\n    \"jumlah_segel\": 1,\n    \"nomor_segel\": [\"SGL-OUT-001\"],\n    \"keterangan\": \"Keterangan tambahan\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian3", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian3"] }
+							}
+						},
+						{
+							"name": "Update Step 3",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"jenis_beban\": \"Pallet Updated\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian3", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian3"] }
+							}
+						},
+						{
+							"name": "Reject at Step 3",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"catatan_reject\": \"Muatan tidak sesuai\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian3/reject", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian3", "reject"] }
+							}
+						}
+					]
+				},
+				{
+					"name": "Step 4: Main Gate Keluar",
+					"item": [
+						{
+							"name": "Get Step 4 Detail",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian4", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian4"] }
+							}
+						},
+						{
+							"name": "Submit Step 4 (Final)",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"jam_keluar\": \"17:00\",\n    \"emergency_respon_kontak\": \"081234567890\",\n    \"keterangan\": \"Keterangan tambahan\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian4", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian4"] }
+							}
+						},
+						{
+							"name": "Update Step 4",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"jam_keluar\": \"18:00\"\n}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/bagian4", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "bagian4"] }
+							}
+						},
+						{
+							"name": "Finalize Step 4",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Accept", "value": "application/json" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": { "raw": "{{base_url}}/vcf/{{vcf_id}}/finalize", "host": ["{{base_url}}"], "path": ["vcf", "{{vcf_id}}", "finalize"] }
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000/api", "type": "string" },
+		{ "key": "token", "value": "", "type": "string" },
+		{ "key": "vcf_id", "value": "1", "type": "string" },
+		{ "key": "user_id", "value": "1", "type": "string" },
+		{ "key": "transporter_id", "value": "1", "type": "string" },
+		{ "key": "driver_id", "value": "1", "type": "string" },
+		{ "key": "jenis_kendaraan_id", "value": "1", "type": "string" },
+		{ "key": "produk_id", "value": "1", "type": "string" },
+		{ "key": "item_id", "value": "1", "type": "string" },
+		{ "key": "item_muatan_id", "value": "1", "type": "string" },
+		{ "key": "item_pemeriksaan_masuk_id", "value": "1", "type": "string" },
+		{ "key": "item_pemeriksaan_keluar_id", "value": "1", "type": "string" },
+		{ "key": "setting_key", "value": "vcf.show_produk_lainnya", "type": "string" }
+	]
+}

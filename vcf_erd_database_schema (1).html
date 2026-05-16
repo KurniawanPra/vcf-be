@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VCF ERD — Database Schema</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: sans-serif; margin: 0; padding: 1rem 2rem; background: #fff; color: #3d3d3a; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  p { font-size: 13px; color: #73726c; margin: 0 0 0.75rem; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; }
+  .toolbar button {
+    padding: 4px 12px; font-size: 13px; border: 1px solid #ccc;
+    border-radius: 6px; background: #f5f5f3; cursor: pointer; color: #3d3d3a;
+  }
+  .toolbar button:hover { background: #e8e8e5; }
+  .toolbar span { font-size: 13px; color: #73726c; min-width: 40px; text-align: center; }
+  #erd-scroll {
+    overflow: auto;
+    border: 1px solid #e0dfd8;
+    border-radius: 8px;
+    background: #fafaf8;
+    max-height: 85vh;
+  }
+  #erd-inner {
+    transform-origin: top left;
+    display: inline-block;
+    padding: 1rem;
+  }
+  #erd svg { display: block; height: auto; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a18; color: #c2c0b6; }
+    .toolbar button { background: #2c2c2a; border-color: #444; color: #c2c0b6; }
+    .toolbar button:hover { background: #3a3a38; }
+    #erd-scroll { border-color: #3a3a38; background: #222220; }
+  }
+</style>
+</head>
+<body>
+<h1>Vehicle Control Form (VCF) — ERD Database Schema</h1>
+<p>FM-BSHS-42-01 · PT. Industri Nabati Lestari · Digitalisasi Form</p>
+<div class="toolbar">
+  <button onclick="zoom(-0.1)">− Zoom Out</button>
+  <span id="zoom-label">100%</span>
+  <button onclick="zoom(0.1)">+ Zoom In</button>
+  <button onclick="resetZoom()">Reset</button>
+</div>
+<div id="erd-scroll">
+  <div id="erd-inner">
+    <div id="erd"></div>
+  </div>
+</div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: 'sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '12px',
+    fontFamily: 'sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#3C3489' : '#EEEDFE',
+    primaryTextColor: dark ? '#CECBF6' : '#3C3489',
+    primaryBorderColor: dark ? '#534AB7' : '#AFA9EC',
+    secondaryColor: dark ? '#085041' : '#E1F5EE',
+    tertiaryColor: dark ? '#083A52' : '#E6F1FB',
+  },
+});
+
+const diagram = `erDiagram
+  TRANSPORTER {
+    int id PK
+    string nama_transporter
+    string kode
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  DRIVER {
+    int id PK
+    string nama_supir
+    string no_sim
+    string jenis_sim
+    date tgl_berlaku_sim
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  JENIS_KENDARAAN {
+    int id PK
+    string nama
+    string kode
+    int urutan
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  LOGISTIK {
+    int id PK
+    string nama
+    string kode
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  PRODUK {
+    int id PK
+    string nama
+    string keterangan
+    string kode
+    int nomor_urut
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  ITEM_KELENGKAPAN_SUPIR {
+    int id PK
+    string nama_item
+    string keterangan
+    int urutan
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  ITEM_MUATAN {
+    int id PK
+    string nama_item
+    string jenis
+    string keterangan
+    int urutan
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  ITEM_PEMERIKSAAN_MASUK {
+    int id PK
+    string nama_item
+    string kode
+    string tipe_jawaban
+    text pilihan_jawaban
+    boolean has_detail
+    string keterangan_detail
+    int urutan
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  ITEM_PEMERIKSAAN_KELUAR {
+    int id PK
+    string nama_item
+    string kode
+    string tipe_jawaban
+    text pilihan_jawaban
+    boolean has_detail
+    string keterangan_detail
+    int urutan
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  USER {
+    int id PK
+    string nama
+    string username
+    string password_hash
+    string role
+    boolean is_active
+    timestamp created_at
+  }
+
+  VCF {
+    int id PK
+    string nomor_urut
+    date tanggal
+    string produk
+    string tipe_kegiatan
+    string asal_tujuan
+    int jenis_kendaraan_id FK
+    string no_polisi
+    string tipe_kendaraan
+    int tahun_kendaraan
+    int transporter_id FK
+    int driver_id FK
+    time jam_masuk
+    text keterangan
+    string status
+    text catatan
+    int created_by FK
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_KELENGKAPAN_SUPIR {
+    int id PK
+    int vcf_id FK
+    int item_id FK
+    boolean nilai
+    string keterangan
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_MUATAN_DIBAWA {
+    int id PK
+    int vcf_id FK
+    int item_muatan_id FK
+    string nilai
+    string keterangan
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_MUATAN_DIISI {
+    int id PK
+    int vcf_id FK
+    int item_muatan_id FK
+    string nilai
+    string keterangan
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_PEMERIKSAAN_MASUK {
+    int id PK
+    int vcf_id FK
+    int item_id FK
+    string nilai
+    string keterangan
+    int petugas_id FK
+    timestamp waktu_input
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_BEBAN_TAMBAHAN_MASUK {
+    int id PK
+    int vcf_id FK
+    string jenis_beban
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_SEGEL_MASUK {
+    int id PK
+    int vcf_id FK
+    int jumlah_segel
+    text keterangan
+    int petugas_id FK
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_NOMOR_SEGEL_MASUK {
+    int id PK
+    int segel_masuk_id FK
+    int urutan
+    string nomor_segel
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_PEMERIKSAAN_KELUAR {
+    int id PK
+    int vcf_id FK
+    int item_id FK
+    string nilai
+    string keterangan
+    int petugas_id FK
+    timestamp waktu_input
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_BEBAN_TAMBAHAN_KELUAR {
+    int id PK
+    int vcf_id FK
+    string jenis_beban
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_SEGEL_KELUAR {
+    int id PK
+    int vcf_id FK
+    int jumlah_segel
+    text keterangan
+    int petugas_id FK
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_NOMOR_SEGEL_KELUAR {
+    int id PK
+    int segel_keluar_id FK
+    int urutan
+    string nomor_segel
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VCF_KELUAR {
+    int id PK
+    int vcf_id FK
+    time jam_keluar
+    string emergency_respon_kontak
+    text keterangan
+    int petugas_id FK
+    timestamp waktu_input
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  SETTINGS {
+    int id PK
+    string key UK
+    text value
+    string type
+    string group
+    string label
+    text description
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  TRANSPORTER ||--o{ DRIVER : memiliki
+  TRANSPORTER ||--o{ VCF : digunakan_di
+  DRIVER ||--o{ VCF : mengemudikan
+  JENIS_KENDARAAN ||--o{ VCF : mengklasifikasi
+  LOGISTIK ||--o{ VCF : terkait
+  PRODUK ||--o{ VCF : digunakan
+  USER ||--o{ VCF : membuat
+
+  VCF ||--o{ VCF_KELENGKAPAN_SUPIR : memiliki
+  ITEM_KELENGKAPAN_SUPIR ||--o{ VCF_KELENGKAPAN_SUPIR : mereferensi
+
+  VCF ||--o{ VCF_MUATAN_DIBAWA : memiliki
+  VCF ||--o{ VCF_MUATAN_DIISI : memiliki
+  ITEM_MUATAN ||--o{ VCF_MUATAN_DIBAWA : mereferensi
+  ITEM_MUATAN ||--o{ VCF_MUATAN_DIISI : mereferensi
+
+  VCF ||--o{ VCF_PEMERIKSAAN_MASUK : memiliki
+  ITEM_PEMERIKSAAN_MASUK ||--o{ VCF_PEMERIKSAAN_MASUK : mereferensi
+  USER ||--o{ VCF_PEMERIKSAAN_MASUK : diisi_oleh
+
+  VCF ||--o| VCF_BEBAN_TAMBAHAN_MASUK : memiliki
+  VCF ||--o| VCF_SEGEL_MASUK : memiliki
+  VCF_SEGEL_MASUK ||--o{ VCF_NOMOR_SEGEL_MASUK : terdiri_dari
+
+  VCF ||--o{ VCF_PEMERIKSAAN_KELUAR : memiliki
+  ITEM_PEMERIKSAAN_KELUAR ||--o{ VCF_PEMERIKSAAN_KELUAR : mereferensi
+  USER ||--o{ VCF_PEMERIKSAAN_KELUAR : diisi_oleh
+
+  VCF ||--o| VCF_BEBAN_TAMBAHAN_KELUAR : memiliki
+  VCF ||--o| VCF_SEGEL_KELUAR : memiliki
+  VCF_SEGEL_KELUAR ||--o{ VCF_NOMOR_SEGEL_KELUAR : terdiri_dari
+
+  VCF ||--o| VCF_KELUAR : memiliki
+  USER ||--o{ VCF_KELUAR : diisi_oleh
+`;
+
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+
+document.querySelectorAll('#erd svg .row-rect-odd path, #erd svg .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+
+const svgEl = document.querySelector('#erd svg');
+if (svgEl) {
+  const vb = svgEl.getAttribute('viewBox');
+  if (vb) {
+    const parts = vb.trim().split(/[\s,]+/);
+    const vbW = parseFloat(parts[2]) || 1400;
+    const vbH = parseFloat(parts[3]) || 2000;
+    svgEl.setAttribute('width', vbW);
+    svgEl.setAttribute('height', vbH);
+    svgEl.style.width = vbW + 'px';
+    svgEl.style.height = vbH + 'px';
+  }
+}
+</script>
+<script>
+let scale = 1;
+function zoom(delta) {
+  scale = Math.min(3, Math.max(0.25, +(scale + delta).toFixed(2)));
+  applyZoom();
+}
+function resetZoom() { scale = 1; applyZoom(); }
+function applyZoom() {
+  document.getElementById('erd-inner').style.transform = 'scale(' + scale + ')';
+  document.getElementById('erd-inner').style.transformOrigin = 'top left';
+  document.getElementById('zoom-label').textContent = Math.round(scale * 100) + '%';
+  const inner = document.getElementById('erd-inner');
+  const scroll = document.getElementById('erd-scroll');
+  scroll.style.height = Math.max(400, inner.offsetHeight * scale + 32) + 'px';
+}
+document.getElementById('erd-scroll').addEventListener('wheel', function(e) {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    zoom(e.deltaY < 0 ? 0.1 : -0.1);
+  }
+}, { passive: false });
+</script>
+</body>
+</html>
