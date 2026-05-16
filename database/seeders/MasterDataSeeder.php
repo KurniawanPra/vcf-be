@@ -157,5 +157,21 @@ class MasterDataSeeder extends Seeder
             ['id' => 2, 'nama_item' => 'Beban Tambahan',  'kode' => 'BTK', 'tipe_jawaban' => 'Ada,Tidak Ada',             'has_detail' => true,  'keterangan_detail' => 'Jenis Beban',  'urutan' => 2, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
             ['id' => 3, 'nama_item' => 'Segel',           'kode' => 'SGK', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => true,  'keterangan_detail' => 'Nomor Segel',  'urutan' => 3, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
+
+        // Reset PostgreSQL sequences after seeding with explicit IDs
+        if ($connection->getDriverName() === 'pgsql') {
+            $tables = [
+                'logistiks', 'produks', 'jenis_kendaraans', 'transporters',
+                'drivers', 'users', 'item_kelengkapan_supirs', 'item_muatans',
+                'item_pemeriksaan_masuks', 'item_pemeriksaan_keluars'
+            ];
+
+            foreach ($tables as $table) {
+                $maxId = DB::table($table)->max('id');
+                if ($maxId) {
+                    DB::statement("ALTER SEQUENCE {$table}_id_seq RESTART WITH " . ($maxId + 1));
+                }
+            }
+        }
     }
 }
