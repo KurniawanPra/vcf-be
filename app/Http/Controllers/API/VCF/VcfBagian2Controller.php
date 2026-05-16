@@ -18,6 +18,8 @@ class VcfBagian2Controller extends Controller
      */
     private const EDITABLE_STATUSES = [
         'bagian2_selesai',
+        'loading_unloading_proses',
+        'loading_unloading_selesai',
         'bagian3_selesai',
         'weighbridge_keluar',
     ];
@@ -39,23 +41,23 @@ class VcfBagian2Controller extends Controller
 
         $validated = $request->validate([
             // Item pemeriksaan (from master)
-            'pemeriksaan'                       => 'required|array',
-            'pemeriksaan.*.item_id'             => 'required|exists:item_pemeriksaan_masuks,id',
-            'pemeriksaan.*.nilai'               => 'required|string|max:100',
-            'pemeriksaan.*.keterangan'          => 'nullable|string',
+            'pemeriksaan' => 'required|array',
+            'pemeriksaan.*.item_id' => 'required|exists:item_pemeriksaan_masuks,id',
+            'pemeriksaan.*.nilai' => 'required|string|max:100',
+            'pemeriksaan.*.keterangan' => 'nullable|string',
 
             // Beban tambahan (jika ada)
-            'beban_tambahan_ada'                => 'required|boolean',
-            'jenis_beban'                       => 'required_if:beban_tambahan_ada,true|nullable|string|max:255',
+            'beban_tambahan_ada' => 'required|boolean',
+            'jenis_beban' => 'required_if:beban_tambahan_ada,true|nullable|string|max:255',
 
             // Segel
-            'segel_terpasang'                   => 'required|boolean',
-            'jumlah_segel'                      => 'required_if:segel_terpasang,true|nullable|integer|min:1|max:100',
-            'nomor_segel'                       => 'required_if:segel_terpasang,true|nullable|array',
-            'nomor_segel.*'                     => 'required|string|max:100',
+            'segel_terpasang' => 'required|boolean',
+            'jumlah_segel' => 'required_if:segel_terpasang,true|nullable|integer|min:1|max:100',
+            'nomor_segel' => 'required_if:segel_terpasang,true|nullable|array',
+            'nomor_segel.*' => 'required|string|max:100',
 
             // Keterangan umum (opsional)
-            'keterangan'                        => 'nullable|string|max:1000',
+            'keterangan' => 'nullable|string|max:1000',
         ]);
 
         // Pastikan jumlah elemen nomor_segel sesuai jumlah_segel
@@ -72,11 +74,11 @@ class VcfBagian2Controller extends Controller
             // Simpan hasil pemeriksaan
             foreach ($validated['pemeriksaan'] as $item) {
                 VcfPemeriksaanMasuk::create([
-                    'vcf_id'      => $vcf->id,
-                    'item_id'     => $item['item_id'],
-                    'nilai'       => $item['nilai'],
-                    'keterangan'  => $item['keterangan'] ?? null,
-                    'petugas_id'  => $request->user()->id,
+                    'vcf_id' => $vcf->id,
+                    'item_id' => $item['item_id'],
+                    'nilai' => $item['nilai'],
+                    'keterangan' => $item['keterangan'] ?? null,
+                    'petugas_id' => $request->user()->id,
                     'waktu_input' => now(),
                 ]);
             }
@@ -85,7 +87,7 @@ class VcfBagian2Controller extends Controller
             // Simpan beban tambahan jika ada
             if ($validated['beban_tambahan_ada']) {
                 VcfBebanTambahanMasuk::create([
-                    'vcf_id'      => $vcf->id,
+                    'vcf_id' => $vcf->id,
                     'jenis_beban' => $validated['jenis_beban'],
                 ]);
             }
@@ -93,26 +95,26 @@ class VcfBagian2Controller extends Controller
             // Simpan segel (selalu buat record untuk menyimpan keterangan umum)
             if ($validated['segel_terpasang']) {
                 $segel = VcfSegelMasuk::create([
-                    'vcf_id'        => $vcf->id,
-                    'jumlah_segel'  => $validated['jumlah_segel'],
-                    'petugas_id'    => $request->user()->id,
-                    'keterangan'    => $validated['keterangan'] ?? null,
+                    'vcf_id' => $vcf->id,
+                    'jumlah_segel' => $validated['jumlah_segel'],
+                    'petugas_id' => $request->user()->id,
+                    'keterangan' => $validated['keterangan'] ?? null,
                 ]);
 
                 foreach ($validated['nomor_segel'] as $urutan => $nomor) {
                     VcfNomorSegelMasuk::create([
                         'segel_masuk_id' => $segel->id,
-                        'urutan'         => $urutan + 1,
-                        'nomor_segel'    => $nomor,
+                        'urutan' => $urutan + 1,
+                        'nomor_segel' => $nomor,
                     ]);
                 }
             } else {
                 // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
                 $segel = VcfSegelMasuk::create([
-                    'vcf_id'        => $vcf->id,
-                    'jumlah_segel'  => 0,
-                    'petugas_id'    => $request->user()->id,
-                    'keterangan'    => $validated['keterangan'] ?? null,
+                    'vcf_id' => $vcf->id,
+                    'jumlah_segel' => 0,
+                    'petugas_id' => $request->user()->id,
+                    'keterangan' => $validated['keterangan'] ?? null,
                 ]);
             }
 
@@ -123,13 +125,17 @@ class VcfBagian2Controller extends Controller
 
             return response()->json([
                 'message' => 'VCF Bagian 2 berhasil disimpan.',
-                'data'    => $this->loadBagian2($vcf->id),
+                'data' => $this->loadBagian2($vcf->id),
             ]);
-        } catch (\Throwable $e) { if ($e instanceof \Illuminate\Validation\ValidationException) { DB::rollBack(); throw $e; }
+        } catch (\Throwable $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                DB::rollBack();
+                throw $e;
+            }
             DB::rollBack();
             return response()->json([
                 'message' => 'Gagal menyimpan Bagian 2.',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -158,7 +164,7 @@ class VcfBagian2Controller extends Controller
 
         return response()->json([
             'message' => 'VCF berhasil di-reject.',
-            'data'    => [
+            'data' => [
                 'vcf_id' => $vcf->id,
                 'status' => $vcf->status,
             ],
@@ -187,20 +193,20 @@ class VcfBagian2Controller extends Controller
         }
 
         $validated = $request->validate([
-            'pemeriksaan'                       => 'sometimes|array',
-            'pemeriksaan.*.item_id'             => 'required|exists:item_pemeriksaan_masuks,id',
-            'pemeriksaan.*.nilai'               => 'required|string|max:100',
-            'pemeriksaan.*.keterangan'          => 'nullable|string',
+            'pemeriksaan' => 'sometimes|array',
+            'pemeriksaan.*.item_id' => 'required|exists:item_pemeriksaan_masuks,id',
+            'pemeriksaan.*.nilai' => 'required|string|max:100',
+            'pemeriksaan.*.keterangan' => 'nullable|string',
 
-            'beban_tambahan_ada'                => 'sometimes|boolean',
-            'jenis_beban'                       => 'nullable|string|max:255',
+            'beban_tambahan_ada' => 'sometimes|boolean',
+            'jenis_beban' => 'nullable|string|max:255',
 
-            'segel_terpasang'                   => 'sometimes|boolean',
-            'jumlah_segel'                      => 'nullable|integer|min:1|max:100',
-            'nomor_segel'                       => 'nullable|array',
-            'nomor_segel.*'                     => 'required|string|max:100',
+            'segel_terpasang' => 'sometimes|boolean',
+            'jumlah_segel' => 'nullable|integer|min:1|max:100',
+            'nomor_segel' => 'nullable|array',
+            'nomor_segel.*' => 'required|string|max:100',
 
-            'keterangan'                        => 'nullable|string|max:1000',
+            'keterangan' => 'nullable|string|max:1000',
         ]);
 
         DB::beginTransaction();
@@ -209,11 +215,11 @@ class VcfBagian2Controller extends Controller
                 $vcf->pemeriksaanMasuk()->delete();
                 foreach ($validated['pemeriksaan'] as $item) {
                     VcfPemeriksaanMasuk::create([
-                        'vcf_id'      => $vcf->id,
-                        'item_id'     => $item['item_id'],
-                        'nilai'       => $item['nilai'],
-                        'keterangan'  => $item['keterangan'] ?? null,
-                        'petugas_id'  => $request->user()->id,
+                        'vcf_id' => $vcf->id,
+                        'item_id' => $item['item_id'],
+                        'nilai' => $item['nilai'],
+                        'keterangan' => $item['keterangan'] ?? null,
+                        'petugas_id' => $request->user()->id,
                         'waktu_input' => now(),
                     ]);
                 }
@@ -223,7 +229,7 @@ class VcfBagian2Controller extends Controller
                 $vcf->bebanTambahanMasuk()->delete();
                 if ($validated['beban_tambahan_ada']) {
                     VcfBebanTambahanMasuk::create([
-                        'vcf_id'      => $vcf->id,
+                        'vcf_id' => $vcf->id,
                         'jenis_beban' => $validated['jenis_beban'],
                     ]);
                 }
@@ -243,26 +249,26 @@ class VcfBagian2Controller extends Controller
                     }
 
                     $segel = VcfSegelMasuk::create([
-                        'vcf_id'       => $vcf->id,
+                        'vcf_id' => $vcf->id,
                         'jumlah_segel' => $validated['jumlah_segel'],
-                        'petugas_id'   => $request->user()->id,
-                        'keterangan'   => $validated['keterangan'] ?? null,
+                        'petugas_id' => $request->user()->id,
+                        'keterangan' => $validated['keterangan'] ?? null,
                     ]);
 
                     foreach ($validated['nomor_segel'] as $urutan => $nomor) {
                         VcfNomorSegelMasuk::create([
                             'segel_masuk_id' => $segel->id,
-                            'urutan'         => $urutan + 1,
-                            'nomor_segel'    => $nomor,
+                            'urutan' => $urutan + 1,
+                            'nomor_segel' => $nomor,
                         ]);
                     }
                 } else {
                     // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
                     $segel = VcfSegelMasuk::create([
-                        'vcf_id'       => $vcf->id,
+                        'vcf_id' => $vcf->id,
                         'jumlah_segel' => 0,
-                        'petugas_id'   => $request->user()->id,
-                        'keterangan'   => $validated['keterangan'] ?? null,
+                        'petugas_id' => $request->user()->id,
+                        'keterangan' => $validated['keterangan'] ?? null,
                     ]);
                 }
             }
@@ -271,13 +277,17 @@ class VcfBagian2Controller extends Controller
 
             return response()->json([
                 'message' => 'VCF Bagian 2 berhasil diperbarui.',
-                'data'    => $this->loadBagian2($vcf->id),
+                'data' => $this->loadBagian2($vcf->id),
             ]);
-        } catch (\Throwable $e) { if ($e instanceof \Illuminate\Validation\ValidationException) { DB::rollBack(); throw $e; }
+        } catch (\Throwable $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                DB::rollBack();
+                throw $e;
+            }
             DB::rollBack();
             return response()->json([
                 'message' => 'Gagal memperbarui Bagian 2.',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -302,11 +312,11 @@ class VcfBagian2Controller extends Controller
         ])->findOrFail($vcfId);
 
         return [
-            'vcf_id'            => $vcf->id,
-            'status'            => $vcf->status,
-            'pemeriksaan'       => $vcf->pemeriksaanMasuk,
-            'beban_tambahan'    => $vcf->bebanTambahanMasuk,
-            'segel'             => $vcf->segelMasuk,
+            'vcf_id' => $vcf->id,
+            'status' => $vcf->status,
+            'pemeriksaan' => $vcf->pemeriksaanMasuk,
+            'beban_tambahan' => $vcf->bebanTambahanMasuk,
+            'segel' => $vcf->segelMasuk,
         ];
     }
 }

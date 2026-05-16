@@ -321,5 +321,3 @@ Pastikan service MySQL/MariaDB sudah running dan credential di `.env` sudah bena
 ## License
 
 Proprietary - PT. Industri Nabati Lestari
-#   v c f - b e  
- 
