@@ -9,7 +9,7 @@ echo "Starting Laravel application..."
 if [ ! -z "$DB_HOST" ]; then
     echo "Waiting for database at $DB_HOST:${DB_PORT:-3306}..."
     for i in {1..60}; do
-        if nc -z "$DB_HOST" "${DB_PORT:-3306}" 2>/dev/null; then
+        if timeout 1 bash -c "cat < /dev/null > /dev/tcp/$DB_HOST/${DB_PORT:-3306}" 2>/dev/null; then
             echo "Database is ready!"
             break
         fi
