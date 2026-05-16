@@ -13,7 +13,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        $this->call(MasterDataSeeder::class);
-        $this->call(SettingsSeeder::class);
+        $this->call([
+            MasterDataSeeder::class,
+            SettingsSeeder::class,
+            VcfTransactionSeeder::class,
+        ]);
     }
 }
