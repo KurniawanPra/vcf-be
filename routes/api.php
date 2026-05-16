@@ -32,6 +32,9 @@ use App\Http\Controllers\API\SettingController;
 | Public Routes
 |--------------------------------------------------------------------------
 */
+Route::options('login', function () {
+    return response()->json([], 200);
+});
 Route::post('login', [AuthController::class, 'login']);
 
 /*
