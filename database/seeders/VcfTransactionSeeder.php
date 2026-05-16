@@ -10,7 +10,14 @@ class VcfTransactionSeeder extends Seeder
 {
     public function run()
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // Disable foreign key checks for both MySQL and PostgreSQL
+        $connection = DB::connection();
+        if ($connection->getDriverName() === 'pgsql') {
+            DB::statement('SET CONSTRAINTS ALL DEFERRED;');
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        }
+
         DB::table('vcfs')->truncate();
         DB::table('vcf_bagian1s')->truncate();
         DB::table('vcf_bagian2s')->truncate();
@@ -21,7 +28,13 @@ class VcfTransactionSeeder extends Seeder
         DB::table('segel_keluars')->truncate();
         DB::table('beban_tambahan_masuks')->truncate();
         DB::table('beban_tambahan_keluars')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        // Re-enable foreign key checks
+        if ($connection->getDriverName() === 'pgsql') {
+            DB::statement('SET CONSTRAINTS ALL IMMEDIATE;');
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
 
         $now = Carbon::now();
 
