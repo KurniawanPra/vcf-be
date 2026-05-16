@@ -25,10 +25,14 @@ class VcfBagian1Controller extends Controller
         // Nomor urut reset bulanan.
         $dateStr = request('tanggal', date('Y-m-d'));
         $date = \Carbon\Carbon::parse($dateStr);
-        
+
+        // Use database-agnostic ordering
+        $connection = DB::connection();
+        $castType = $connection->getDriverName() === 'pgsql' ? 'INTEGER' : 'UNSIGNED';
+
         $lastVcf = Vcf::whereYear('tanggal', $date->year)
             ->whereMonth('tanggal', $date->month)
-            ->orderByRaw('CAST(nomor_urut AS UNSIGNED) DESC')
+            ->orderByRaw("CAST(nomor_urut AS {$castType}) DESC")
             ->first();
 
         $nextNumber = 1;
@@ -206,11 +210,14 @@ class VcfBagian1Controller extends Controller
             
             $tanggalVcf = $validated['tanggal'];
             $date = \Carbon\Carbon::parse($tanggalVcf);
-            
+
             // Nomor urut reset bulanan.
+            $connection = DB::connection();
+            $castType = $connection->getDriverName() === 'pgsql' ? 'INTEGER' : 'UNSIGNED';
+
             $maxNum = Vcf::whereYear('tanggal', $date->year)
                 ->whereMonth('tanggal', $date->month)
-                ->max(DB::raw('CAST(nomor_urut AS UNSIGNED)'));
+                ->max(DB::raw("CAST(nomor_urut AS {$castType})"));
                 
             $newNomorUrut = str_pad((int) $maxNum + 1, 5, '0', STR_PAD_LEFT);
 
