@@ -1,7 +1,7 @@
-# Multi-stage build for Laravel - Optimized for Render
+# Multi-stage build for Laravel - Production Ready
 FROM php:8.1-fpm as builder
 
-# Install build dependencies
+# Update APT cache
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpng-dev \
@@ -53,17 +53,15 @@ RUN php artisan key:generate || true
 # Production stage
 FROM php:8.1-fpm
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpng6 \
-    libjpeg62-turbo \
-    libfreetype6 \
-    libonig5 \
-    libxml2 \
     nginx \
     curl \
     bash \
     ca-certificates \
+    libfreetype6 \
+    libonig5 \
+    libxml2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
