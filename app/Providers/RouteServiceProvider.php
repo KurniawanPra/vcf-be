@@ -46,6 +46,15 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
+
+            // Public auth routes without /api prefix (for CORS compatibility)
+            Route::middleware('api')
+                ->group(function () {
+                    Route::post('login', 'App\Http\Controllers\API\AuthController@login');
+                    Route::options('login', function () {
+                        return response()->json([], 200);
+                    });
+                });
         });
     }
 
