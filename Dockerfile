@@ -1,147 +1,83 @@
-# Multi-stage build for Laravel - Production Ready
-FROM php:8.1-fpm as builder
+# STAGE 1: Build Stage (Install Dependencies)
+FROM composer:2.7 as build
 
-# Update APT cache
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libonig-dev \
-    libxml2-dev \
-    git \
-    curl \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-        gd \
-        bcmath \
-        ctype \
-        json \
-        mbstring \
-        openssl \
-        pdo_mysql \
-        tokenizer \
-        xml
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Set working directory
 WORKDIR /app
 
-# Copy composer files
+# Copy only composer files for caching
 COPY composer.json composer.lock ./
 
-# Install PHP dependencies
+# Install dependencies in a light environment
 RUN composer install \
     --no-dev \
-    --no-interaction \
-    --prefer-dist \
     --optimize-autoloader \
-    --no-scripts
+    --no-interaction \
+    --no-progress \
+    --no-scripts \
+    --prefer-dist \
+    --ignore-platform-reqs
 
-# Copy application
-COPY . .
+# STAGE 2: Production Stage (Apache)
+FROM php:8.2-apache
 
-# Generate APP_KEY
-RUN php artisan key:generate || true
+# Set environment variables
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Production stage
-FROM php:8.1-fpm
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    git \
     curl \
-    bash \
-    ca-certificates \
-    libfreetype6 \
-    libonig5 \
-    libxml2 \
-    && rm -rf /var/lib/apt/lists/*
+    libzip-dev \
+    libicu-dev \
+    libsodium-dev \
+    libpq-dev \
+    libssl-dev
+
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-        gd \
-        bcmath \
-        ctype \
-        json \
-        mbstring \
-        openssl \
-        pdo_mysql \
-        tokenizer \
-        xml
+RUN docker-php-ext-install pdo_mysql pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl sodium
+
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
 
 # Set working directory
-WORKDIR /app
+WORKDIR /var/www/html
 
-# Copy application from builder
-COPY --from=builder /app /app
+# Copy application code
+COPY . .
 
-# Create necessary directories
-RUN mkdir -p /app/storage/logs \
-    && mkdir -p /app/storage/framework/sessions \
-    && mkdir -p /app/storage/framework/views \
-    && mkdir -p /app/storage/framework/cache \
-    && mkdir -p /app/bootstrap/cache
+# Copy vendor from build stage
+COPY --from=build /app/vendor /var/www/html/vendor
 
-# Set permissions
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+# Create necessary directories and set permissions
+RUN mkdir -p \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    bootstrap/cache && \
+    rm -f bootstrap/cache/*.php && \
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/sites-available/default
+# Install Composer binary for dump-autoload
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copy startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+# Generate autoloader without running scripts automatically
+RUN composer dump-autoload --optimize --no-dev --no-scripts --ignore-platform-reqs
 
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Start services
-CMD ["/start.sh"]
-
-# Set working directory
-WORKDIR /app
-
-# Copy application from builder
-COPY --from=builder /app /app
-
-# Create necessary directories
-RUN mkdir -p /app/storage/logs \
-    && mkdir -p /app/storage/framework/sessions \
-    && mkdir -p /app/storage/framework/views \
-    && mkdir -p /app/storage/framework/cache \
-    && mkdir -p /app/bootstrap/cache
-
-# Set permissions
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
-
-# Create nginx config directory if not exists
-RUN mkdir -p /etc/nginx/http.d
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/http.d/default.conf
-
-# Copy startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+# Change Apache document root
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # Expose port
-EXPOSE 8080
+EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
-
-# Start services
-CMD ["/start.sh"]
+# Entrypoint script
+CMD cp .env.example .env && php artisan key:generate && php artisan package:discover --ansi && (php artisan migrate --force --seed || true) && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && apache2-foreground
