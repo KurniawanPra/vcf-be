@@ -1,53 +1,372 @@
-# VCF System - Backend API
+# VCF System API - Backend
 
-Backend API untuk sistem Vehicle Control Form (VCF) PT. Industri Nabati Lestari. Sistem ini mendigitalkan proses pemeriksaan kendaraan yang masuk dan keluar area perusahaan.
+Sistem API untuk Vehicle Control Form (VCF) - Digitized vehicle inspection system untuk PT. Industri Nabati Lestari.
 
-## Tech Stack
+## 🏗️ Tech Stack
 
-- **Framework**: Laravel 11
-- **PHP**: 8.2+
-- **Database**: MySQL/MariaDB
-- **Authentication**: Laravel Sanctum
-- **API Documentation**: Postman Collection
+- **Framework**: Laravel 8.x
+- **PHP**: 8.1+
+- **Database**: MySQL 8.0+
+- **Authentication**: Laravel Sanctum (token-based)
+- **Containerization**: Docker + Alpine Linux
+- **Web Server**: Nginx
 
-## Prerequisites
+## 🚀 Quick Start (Local Development with Docker)
 
-Sebelum memulai, pastikan sudah terinstall:
-
-- PHP 8.2 atau lebih tinggi
-- Composer
-- MySQL/MariaDB 8.0+
-- Node.js & NPM (untuk build assets jika diperlukan)
+### Prerequisites
+- Docker Desktop (Windows/Mac) atau Docker Engine (Linux)
 - Git
 
-## Installation
+### Setup Lokal
 
-### 1. Clone Repository
-
+#### Windows
 ```bash
-git clone <repository-url>
-cd vcf/be
+# 1. Clone project
+git clone <repo-url>
+cd be
+
+# 2. Run setup script
+setup-docker.bat
 ```
 
-### 2. Install Dependencies
-
+#### Linux/Mac
 ```bash
-composer install
+# 1. Clone project
+git clone <repo-url>
+cd be
+
+# 2. Run setup script
+chmod +x setup-docker.sh
+./setup-docker.sh
 ```
 
-### 3. Setup Environment
+### Akses Aplikasi
+- **API**: http://localhost:8080
+- **PhpMyAdmin**: http://localhost:8081 (username: vcf_user, password: vcf_password)
 
-Copy file `.env.example` ke `.env`:
+### Docker Commands
 
 ```bash
-cp .env.example .env
+# View logs
+docker-compose logs -f app
+
+# Stop services
+docker-compose down
+
+# Run artisan commands
+docker-compose exec app php artisan migrate --force
+docker-compose exec app php artisan db:seed
+docker-compose exec app php artisan tinker
+
+# Rebuild from scratch
+docker-compose down -v
+docker image rm vcf-app
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
-Edit file `.env` dan sesuaikan konfigurasi database:
+---
+
+## 📦 Deployment ke Render.com
+
+### Step 1: Setup Render Account
+1. Buka https://render.com
+2. Sign up dengan GitHub account
+3. Authorize Render untuk akses repository
+
+### Step 2: Deploy MySQL Database
+
+1. Dashboard → **New** → **MySQL**
+2. Isi konfigurasi:
+   - **Name**: `vcf-db`
+   - **Database Name**: `vcf_production`
+   - **Username**: `vcf_user`
+   - **Region**: Singapore (atau terdekat)
+   - **Plan**: Free
+3. Click **Create Database**
+4. **Catat**: Host, Username, Password dari notification email
+
+### Step 3: Deploy Web Service
+
+1. Dashboard → **New** → **Web Service**
+2. Select repository: vcf-github-rinko/be
+3. Isi konfigurasi:
+   - **Name**: `vcf-api`
+   - **Environment**: Docker
+   - **Region**: Singapore
+   - **Plan**: Free
+4. Click **Create Web Service** (tunggu ~5-10 menit)
+
+### Step 4: Configure Environment Variables
+
+Di Web Service settings → **Environment**, tambahkan:
 
 ```env
-APP_NAME="VCF System"
-APP_ENV=local
+APP_ENV=production
+APP_DEBUG=false
+LOG_CHANNEL=errorlog
+DB_CONNECTION=mysql
+DB_HOST=[database-host-dari-mysql-setup]
+DB_PORT=3306
+DB_DATABASE=vcf_production
+DB_USERNAME=vcf_user
+DB_PASSWORD=[password-dari-mysql-setup]
+APP_KEY=[generate-dengan-php-artisan-key-generate]
+SANCTUM_STATEFUL_DOMAINS=your-domain.onrender.com
+SESSION_DOMAIN=.onrender.com
+```
+
+**Cara generate APP_KEY lokal:**
+```bash
+docker-compose exec app php artisan key:generate
+# Copy output: base64:xxxxx
+```
+
+Klik **Save** → Service akan auto re-deploy.
+
+### Step 5: Run Database Setup
+
+Setelah deployment success:
+
+1. Buka Web Service → **Shell**
+2. Jalankan:
+```bash
+php artisan migrate --force
+php artisan db:seed
+php artisan config:cache
+php artisan route:cache
+```
+
+### Step 6: Verify Deployment
+
+```bash
+# Test endpoint
+curl https://your-domain.onrender.com/
+
+# Check health
+curl https://your-domain.onrender.com/health
+```
+
+---
+
+## 📋 Project Structure
+
+```
+app/
+├── Console/              # Artisan commands
+├── Http/
+│   ├── Controllers/
+│   │   ├── API/Auth/     # Authentication
+│   │   ├── API/Master/   # Master data CRUD
+│   │   └── API/VCF/      # VCF workflow (Bagian1-4)
+│   ├── Kernel.php
+│   └── Middleware/       # Auth & Access control
+├── Models/               # Eloquent models
+└── Providers/
+
+database/
+├── migrations/           # Schema definitions
+├── seeders/             # Data seeders
+└── factories/           # Test factories
+
+routes/
+├── api.php              # API routes (main)
+└── web.php
+
+tests/
+├── Feature/             # Integration tests
+└── Unit/                # Unit tests
+```
+
+---
+
+## 🔐 Authentication
+
+### Login
+```bash
+POST /api/login
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+```
+
+Response:
+```json
+{
+  "message": "Login successful",
+  "data": {
+    "token": "bearer-token-here",
+    "user": {...}
+  },
+  "success": true
+}
+```
+
+### Protected Routes
+Tambahkan header:
+```
+Authorization: Bearer {token}
+```
+
+---
+
+## 📚 API Endpoints
+
+### Master Data
+- `GET/POST /api/transporters` - Perusahaan pengangkut
+- `GET/POST /api/drivers` - Data sopir
+- `GET/POST /api/jenis-kendaraan` - Tipe kendaraan
+- `GET/POST /api/produk` - Data produk
+- `GET/POST /api/logistik` - Logistik
+
+### VCF Workflow
+- `POST /api/vcf/bagian1` - Gate masuk
+- `POST /api/vcf/bagian2` - Weighbridge masuk
+- `POST /api/vcf/bagian3` - Weighbridge keluar
+- `POST /api/vcf/bagian4` - Gate keluar
+
+**Full API Documentation** tersedia di: `VCF System API — PT. Industri Nabati Lestari.postman_collection.json`
+
+---
+
+## 🗄️ Database
+
+### Tables
+
+| Table | Purpose |
+|-------|---------|
+| `vcfs` | Main VCF records |
+| `users` | User accounts |
+| `transporters` | Transport companies |
+| `drivers` | Driver data |
+| `jenis_kendaraans` | Vehicle types |
+| `produks` | Products |
+| `logistiks` | Logistics |
+| `vcf_pemeriksaan_masuk` | Gate entry inspection |
+| `vcf_muatan_dibawa` | Incoming cargo |
+| `vcf_muatan_diisi` | Cargo loaded |
+| `vcf_pemeriksaan_keluar` | Gate exit inspection |
+
+### Migrations
+```bash
+# Run migrations
+php artisan migrate
+
+# Rollback last batch
+php artisan migrate:rollback
+
+# Reset semua
+php artisan migrate:fresh --seed
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+./vendor/bin/phpunit
+
+# Feature tests only
+./vendor/bin/phpunit tests/Feature
+
+# Unit tests only
+./vendor/bin/phpunit tests/Unit
+
+# Specific test
+./vendor/bin/phpunit tests/Feature/VcfBagian1ControllerTest
+```
+
+---
+
+## 🔧 Artisan Commands
+
+```bash
+# Cache optimization
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Clear caches
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+
+# Database
+php artisan migrate
+php artisan db:seed
+php artisan db:seed --class=MasterDataSeeder
+
+# Tinker (REPL)
+php artisan tinker
+
+# Generate resources
+php artisan make:model ModelName
+php artisan make:controller ControllerName
+php artisan make:migration migration_name
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Docker Build Error
+```bash
+# Clean rebuild
+docker-compose down -v
+docker image prune -a
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+### Database Connection Failed
+```bash
+# Check database health
+docker-compose logs db
+
+# Verify credentials in .env
+cat .env | grep DB_
+
+# Restart database
+docker-compose restart db
+```
+
+### Render Deployment Issues
+
+**502 Bad Gateway**
+- Check logs: Dashboard → Logs
+- Restart service: Dashboard → Manual Deploy
+
+**Database Connection Error**
+- Verify env variables are correct
+- Check database credentials
+- Run migrations in Shell
+
+**APP_KEY Error**
+- Generate new: `docker-compose exec app php artisan key:generate`
+- Copy base64 value to Render env var
+
+---
+
+## 📞 Support Resources
+
+- [Laravel Documentation](https://laravel.com/docs/8.x)
+- [Render Documentation](https://render.com/docs)
+- [Docker Documentation](https://docs.docker.com/)
+- [Postman Collection](./VCF%20System%20API%20—%20PT.%20Industri%20Nabati%20Lestari.postman_collection.json)
+- [AGENTS.md](./AGENTS.md) - Developer guide
+
+---
+
+## 📄 License
+
+MIT License - PT. Industri Nabati Lestari
+
+---
+
+**Last Updated**: May 2026  
+**Status**: Production Ready ✅
 APP_KEY=
 APP_DEBUG=true
 APP_URL=http://localhost:8000

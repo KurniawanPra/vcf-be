@@ -1,12 +1,13 @@
 # Multi-stage build for Laravel
 FROM php:8.1-fpm-alpine as builder
 
-# Install system dependencies
+# Install build dependencies
 RUN apk add --no-cache \
     build-base \
     autoconf \
+    pkgconfig \
     libpng-dev \
-    jpeg-dev \
+    libjpeg-turbo-dev \
     freetype-dev \
     oniguruma-dev \
     libxml2-dev \
@@ -15,18 +16,20 @@ RUN apk add --no-cache \
     unzip
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+RUN docker-php-ext-configure gd \
+        --with-freetype=/usr/include \
+        --with-jpeg=/usr/include \
     && docker-php-ext-install -j$(nproc) \
-    gd \
-    bcmath \
-    ctype \
-    fileinfo \
-    json \
-    mbstring \
-    openssl \
-    pdo_mysql \
-    tokenizer \
-    xml
+        gd \
+        bcmath \
+        ctype \
+        fileinfo \
+        json \
+        mbstring \
+        openssl \
+        pdo_mysql \
+        tokenizer \
+        xml
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -38,7 +41,7 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies
-RUN composer install --no-dev --no-interaction --prefer-dist
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 # Copy application files
 COPY . .
@@ -49,31 +52,41 @@ RUN php artisan key:generate || true
 # Production stage
 FROM php:8.1-fpm-alpine
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apk add --no-cache \
     libpng \
-    jpeg \
+    libjpeg-turbo \
     freetype \
     oniguruma \
     libxml2 \
     nginx \
     curl \
     netcat-openbsd \
-    bash
+    bash \
+    dcron
 
-# Install PHP extensions (runtime only)
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+# Install runtime PHP extensions
+RUN apk add --no-cache --virtual .php-deps \
+        freetype-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
+        libxml2-dev \
+        oniguruma-dev \
+    && docker-php-ext-configure gd \
+        --with-freetype=/usr/include \
+        --with-jpeg=/usr/include \
     && docker-php-ext-install -j$(nproc) \
-    gd \
-    bcmath \
-    ctype \
-    fileinfo \
-    json \
-    mbstring \
-    openssl \
-    pdo_mysql \
-    tokenizer \
-    xml
+        gd \
+        bcmath \
+        ctype \
+        fileinfo \
+        json \
+        mbstring \
+        openssl \
+        pdo_mysql \
+        tokenizer \
+        xml \
+    && apk del .php-deps
 
 # Set working directory
 WORKDIR /app
