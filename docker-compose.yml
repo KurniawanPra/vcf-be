@@ -25,10 +25,12 @@ services:
       SESSION_DRIVER: file
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stack
+      SANCTUM_STATEFUL_DOMAINS: localhost,127.0.0.1
     volumes:
       - ./:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - vcf-network
 
@@ -48,12 +50,13 @@ services:
     networks:
       - vcf-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME:-vcf_user}", "-p${DB_PASSWORD:-vcf_password}"]
       timeout: 20s
       retries: 10
+      start_period: 10s
 
   phpmyadmin:
-    image: phpmyadmin
+    image: phpmyadmin:latest
     container_name: vcf-phpmyadmin
     restart: unless-stopped
     environment:
@@ -64,7 +67,8 @@ services:
     ports:
       - "8081:80"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - vcf-network
 

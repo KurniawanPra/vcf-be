@@ -1,18 +1,18 @@
 # Multi-stage build for Laravel
-FROM php:8.1-fpm as builder
+FROM php:8.1-fpm-alpine as builder
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apk add --no-cache \
+    build-base \
+    autoconf \
     libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libonig-dev \
+    jpeg-dev \
+    freetype-dev \
+    oniguruma-dev \
     libxml2-dev \
     git \
     curl \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+    unzip
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -47,18 +47,19 @@ COPY . .
 RUN php artisan key:generate || true
 
 # Production stage
-FROM php:8.1-fpm
+FROM php:8.1-fpm-alpine
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libpng6 \
-    libjpeg62-turbo \
-    libfreetype6 \
-    libonig5 \
+# Install runtime dependencies only
+RUN apk add --no-cache \
+    libpng \
+    jpeg \
+    freetype \
+    oniguruma \
     libxml2 \
     nginx \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    netcat-openbsd \
+    bash
 
 # Install PHP extensions (runtime only)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -90,8 +91,11 @@ RUN mkdir -p /app/storage/logs \
 # Set permissions
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
 
+# Create nginx config directory if not exists
+RUN mkdir -p /etc/nginx/http.d
+
 # Copy nginx configuration
-COPY nginx.conf /etc/nginx/sites-available/default
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
 # Copy startup script
 COPY start.sh /start.sh
