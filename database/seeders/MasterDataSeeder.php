@@ -10,7 +10,13 @@ class MasterDataSeeder extends Seeder
 {
     public function run()
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // Disable foreign key checks for both MySQL and PostgreSQL
+        $connection = DB::connection();
+        if ($connection->getDriverName() === 'pgsql') {
+            DB::statement('SET CONSTRAINTS ALL DEFERRED;');
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        }
 
         DB::table('item_pemeriksaan_keluars')->truncate();
         DB::table('item_pemeriksaan_masuks')->truncate();
@@ -23,7 +29,12 @@ class MasterDataSeeder extends Seeder
         DB::table('logistiks')->truncate();
         DB::table('users')->truncate();
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // Re-enable foreign key checks
+        if ($connection->getDriverName() === 'pgsql') {
+            DB::statement('SET CONSTRAINTS ALL IMMEDIATE;');
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
 
         // 1. Logistik
         DB::table('logistiks')->insert([
