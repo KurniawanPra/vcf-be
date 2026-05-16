@@ -1,5 +1,5 @@
 # Multi-stage build for Laravel - Optimized for Render
-FROM php:8.1-fpm-slim as builder
+FROM php:8.1-fpm as builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -51,7 +51,7 @@ COPY . .
 RUN php artisan key:generate || true
 
 # Production stage
-FROM php:8.1-fpm-slim
+FROM php:8.1-fpm
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -62,7 +62,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2 \
     nginx \
     curl \
-    netcat \
     bash \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
