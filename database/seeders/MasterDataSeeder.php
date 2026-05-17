@@ -18,6 +18,7 @@ class MasterDataSeeder extends Seeder
             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         }
 
+        DB::table('violations')->truncate();
         DB::table('item_pemeriksaan_keluars')->truncate();
         DB::table('item_pemeriksaan_masuks')->truncate();
         DB::table('item_muatans')->truncate();
@@ -68,6 +69,8 @@ class MasterDataSeeder extends Seeder
         ]);
 
         // 5. Driver
+        // Status: normal (default) | warning (pernah melanggar) | blacklist (diblokir admin)
+        // Untuk membuka blacklist: admin PATCH /api/master/drivers/{id}/status {status: normal}
         DB::table('drivers')->insert([
             [
                 'id'              => 1,
@@ -76,6 +79,7 @@ class MasterDataSeeder extends Seeder
                 'jenis_sim'       => 'BII Umum',
                 'tgl_berlaku_sim' => '2028-12-31',
                 'is_active'       => true,
+                'status'          => 'normal',
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ],
@@ -86,6 +90,7 @@ class MasterDataSeeder extends Seeder
                 'jenis_sim'       => 'BII Umum',
                 'tgl_berlaku_sim' => '2028-12-31',
                 'is_active'       => true,
+                'status'          => 'warning',
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ],
@@ -96,8 +101,49 @@ class MasterDataSeeder extends Seeder
                 'jenis_sim'       => 'C',
                 'tgl_berlaku_sim' => '2026-05-28',
                 'is_active'       => true,
+                'status'          => 'blacklist',
                 'created_at'      => now(),
                 'updated_at'      => now(),
+            ],
+        ]);
+
+        // 5b. Violations — contoh data pelanggaran
+        // Driver 2 (Agus Wijaya): status warning, pernah membawa bandul
+        // Driver 3 (Arul Budianto): status blacklist, diblokir admin karena pelanggaran berat
+        // Untuk membuka blacklist: admin PATCH /api/master/drivers/{id}/status dengan body {"status": "normal"}
+        DB::table('violations')->insert([
+            [
+                'id'                  => 1,
+                'driver_id'           => 2,
+                'no_polisi'           => null,
+                'jenis_pelanggaran'   => 'Membawa bandul (beban tambahan tidak dilaporkan)',
+                'keterangan'          => 'Ditemukan bandul di bak truk saat pemeriksaan masuk, tidak tercatat di VCF',
+                'tanggal_pelanggaran' => '2026-03-10',
+                'created_by'          => null,
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ],
+            [
+                'id'                  => 2,
+                'driver_id'           => 3,
+                'no_polisi'           => null,
+                'jenis_pelanggaran'   => 'Pemalsuan dokumen SPB/DO',
+                'keterangan'          => 'Dokumen SPB terbukti palsu, diteruskan ke pihak berwajib',
+                'tanggal_pelanggaran' => '2026-04-22',
+                'created_by'          => null,
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ],
+            [
+                'id'                  => 3,
+                'driver_id'           => 3,
+                'no_polisi'           => null,
+                'jenis_pelanggaran'   => 'Pengambilan minyak ilegal',
+                'keterangan'          => 'Tertangkap mengambil minyak dari tangki tanpa izin',
+                'tanggal_pelanggaran' => '2026-05-01',
+                'created_by'          => null,
+                'created_at'          => now(),
+                'updated_at'          => now(),
             ],
         ]);
 
@@ -163,7 +209,7 @@ class MasterDataSeeder extends Seeder
             $tables = [
                 'logistiks', 'produks', 'jenis_kendaraans', 'transporters',
                 'drivers', 'users', 'item_kelengkapan_supirs', 'item_muatans',
-                'item_pemeriksaan_masuks', 'item_pemeriksaan_keluars'
+                'item_pemeriksaan_masuks', 'item_pemeriksaan_keluars', 'violations'
             ];
 
             foreach ($tables as $table) {

@@ -198,6 +198,15 @@ class VcfBagian1Controller extends Controller
         DB::beginTransaction();
         try {
 
+            // Cek status blacklist driver
+            $driver = Driver::find($validated['driver_id']);
+            if ($driver && ($driver->status ?? 'normal') === 'blacklist') {
+                return response()->json([
+                    'message' => 'Driver masuk daftar blacklist dan tidak dapat membuat VCF baru.',
+                    'error_code' => 'DRIVER_BLACKLISTED',
+                ], 422);
+            }
+
             $existingRecord = Vcf::where('no_polisi', $validated['no_polisi'])
                                 ->whereNotIn('status', ['selesai', 'reject'])
                                 ->first();

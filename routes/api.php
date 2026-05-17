@@ -26,6 +26,7 @@ use App\Http\Controllers\API\VCF\VcfBagian4Controller;
 
 // Settings
 use App\Http\Controllers\API\SettingController;
+use App\Http\Controllers\API\Master\ViolationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +94,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('admin')->group(function () {
             Route::post('user/{user}/reset-password', [UserController::class, 'resetPassword']);
             Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword']);
+        });
+
+        // Violations
+        Route::middleware('petugas')->group(function () {
+            Route::get('violations/check', [ViolationController::class, 'check']);
+        });
+        Route::middleware('admin')->group(function () {
+            Route::get('violations', [ViolationController::class, 'index']);
+            Route::post('violations', [ViolationController::class, 'store']);
+            Route::put('violations/{violation}', [ViolationController::class, 'update']);
+            Route::delete('violations/{violation}', [ViolationController::class, 'destroy']);
+            Route::patch('driver/{driver}/status', [ViolationController::class, 'updateDriverStatus']);
+            Route::patch('drivers/{driver}/status', [ViolationController::class, 'updateDriverStatus']);
         });
     });
 

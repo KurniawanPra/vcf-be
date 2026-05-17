@@ -25,9 +25,13 @@ class Driver extends Model
         'tgl_berlaku_sim' => 'date',
     ];
 
-
     public function vcfs()
     {
         return $this->hasMany(Vcf::class, 'driver_id');
+    }
+
+    public function violations()
+    {
+        return $this->hasMany(Violation::class, 'driver_id')->orderByDesc('tanggal_pelanggaran');
     }
 }
