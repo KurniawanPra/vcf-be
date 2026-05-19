@@ -10,29 +10,25 @@ class VcfTransactionSeeder extends Seeder
 {
     public function run()
     {
-        // Disable foreign key checks for both MySQL and PostgreSQL
         $connection = DB::connection();
-        if ($connection->getDriverName() === 'pgsql') {
-            DB::statement('SET CONSTRAINTS ALL DEFERRED;');
+        $isPgsql = $connection->getDriverName() === 'pgsql';
+
+        $tables = [
+            'vcf_kelengkapan_supirs', 'vcf_muatan_dibawas', 'vcf_muatan_diisis',
+            'vcf_pemeriksaan_masuks', 'vcf_beban_tambahan_masuks', 'vcf_segel_masuks', 'vcf_nomor_segel_masuks',
+            'vcf_pemeriksaan_keluars', 'vcf_beban_tambahan_keluars', 'vcf_segel_keluars', 'vcf_nomor_segel_keluars',
+            'vcf_keluars', 'vcfs',
+        ];
+
+        if ($isPgsql) {
+            foreach ($tables as $table) {
+                DB::statement("TRUNCATE TABLE {$table} RESTART IDENTITY CASCADE");
+            }
         } else {
             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        }
-
-        DB::table('vcfs')->truncate();
-        DB::table('vcf_bagian1s')->truncate();
-        DB::table('vcf_bagian2s')->truncate();
-        DB::table('vcf_bagian3s')->truncate();
-        DB::table('pemeriksaan_masuks')->truncate();
-        DB::table('pemeriksaan_keluars')->truncate();
-        DB::table('segel_masuks')->truncate();
-        DB::table('segel_keluars')->truncate();
-        DB::table('beban_tambahan_masuks')->truncate();
-        DB::table('beban_tambahan_keluars')->truncate();
-
-        // Re-enable foreign key checks
-        if ($connection->getDriverName() === 'pgsql') {
-            DB::statement('SET CONSTRAINTS ALL IMMEDIATE;');
-        } else {
+            foreach ($tables as $table) {
+                DB::table($table)->truncate();
+            }
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
         }
 
