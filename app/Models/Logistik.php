@@ -13,6 +13,7 @@ class Logistik extends Model
     protected $table = 'logistiks';
 
     protected $fillable = [
+        'nama_logistik',
         'nama',
         'kode',
         'is_active'

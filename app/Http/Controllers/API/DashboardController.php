@@ -19,7 +19,7 @@ class DashboardController extends Controller
                 'reject'  => Vcf::where('status', 'reject')->count(),
             ];
 
-            $recentActivity = Vcf::with(['driver', 'transporter', 'logistik', 'produk'])
+            $recentActivity = Vcf::with(['driver', 'transporter'])
                 ->orderBy('updated_at', 'desc')
                 ->limit(5)
                 ->get()

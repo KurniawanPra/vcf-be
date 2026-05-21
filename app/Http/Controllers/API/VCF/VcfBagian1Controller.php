@@ -54,6 +54,7 @@ class VcfBagian1Controller extends Controller
             'jenisKendaraan',
             'transporter',
             'driver',
+            'timbangan',
             'createdBy:id,nama',
         ]);
 
@@ -190,6 +191,8 @@ class VcfBagian1Controller extends Controller
 
             // Keterangan umum (opsional)
             'keterangan'                     => 'nullable|string|max:1000',
+            'bruto_from'                     => 'nullable|numeric|min:0',
+            'tara_from'                      => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
             'tahun_kendaraan.max'     => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',
@@ -295,6 +298,13 @@ class VcfBagian1Controller extends Controller
                 ]);
             }
 
+            // Create scale record
+            \App\Models\Timbangan::create([
+                'vcf_id'     => $vcf->id,
+                'bruto_from' => $validated['bruto_from'] ?? null,
+                'tara_from'  => $validated['tara_from'] ?? null,
+            ]);
+
             DB::commit();
 
             return response()->json([
@@ -377,6 +387,8 @@ class VcfBagian1Controller extends Controller
             'muatan_diisi.*.keterangan'          => 'nullable|string',
 
             'keterangan'                         => 'nullable|string|max:1000',
+            'bruto_from'                         => 'nullable|numeric|min:0',
+            'tara_from'                          => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
             'tahun_kendaraan.max'     => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',
@@ -432,6 +444,20 @@ class VcfBagian1Controller extends Controller
                 }
             }
 
+            if (array_key_exists('bruto_from', $validated) || array_key_exists('tara_from', $validated)) {
+                $timbanganData = [];
+                if (array_key_exists('bruto_from', $validated)) $timbanganData['bruto_from'] = $validated['bruto_from'];
+                if (array_key_exists('tara_from', $validated)) $timbanganData['tara_from'] = $validated['tara_from'];
+                
+                $timbangan = \App\Models\Timbangan::where('vcf_id', $vcf->id)->first();
+                if ($timbangan) {
+                    $timbangan->update($timbanganData);
+                } else {
+                    $timbanganData['vcf_id'] = $vcf->id;
+                    \App\Models\Timbangan::create($timbanganData);
+                }
+            }
+
             DB::commit();
 
             return response()->json([
@@ -471,6 +497,7 @@ class VcfBagian1Controller extends Controller
             'segelKeluar.nomorSegel',
             'segelKeluar.petugas:id,nama',
             'vcfKeluar.petugas:id,nama',
+            'timbangan',
         ])->findOrFail($id);
     }
 }

@@ -23,6 +23,7 @@ use App\Http\Controllers\API\VCF\VcfBagian1Controller;
 use App\Http\Controllers\API\VCF\VcfBagian2Controller;
 use App\Http\Controllers\API\VCF\VcfBagian3Controller;
 use App\Http\Controllers\API\VCF\VcfBagian4Controller;
+use App\Http\Controllers\API\TimbanganController;
 
 // Settings
 use App\Http\Controllers\API\SettingController;
@@ -145,6 +146,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('{vcfId}/bagian4', [VcfBagian4Controller::class, 'store']);
             Route::put('{vcfId}/bagian4', [VcfBagian4Controller::class, 'update']);
             Route::post('{vcfId}/finalize', [VcfBagian4Controller::class, 'finalize']);
+
+            // Timbangan
+            Route::post('timbangan', [TimbanganController::class, 'store']);
+            Route::get('{vcfId}/timbangan', [TimbanganController::class, 'show']);
+            Route::post('{vcfId}/timbangan/bruto', [TimbanganController::class, 'updateBruto']);
+            Route::post('{vcfId}/timbangan/tara', [TimbanganController::class, 'updateTara']);
+            Route::put('{vcfId}/timbangan/admin', [TimbanganController::class, 'updateAdmin'])->middleware('admin');
         });
     });
 

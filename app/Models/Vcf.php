@@ -101,4 +101,9 @@ class Vcf extends Model
     {
         return $this->hasOne(VcfKeluar::class);
     }
+
+    public function timbangan()
+    {
+        return $this->hasOne(Timbangan::class);
+    }
 }
