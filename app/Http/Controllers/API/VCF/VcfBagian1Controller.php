@@ -150,14 +150,14 @@ class VcfBagian1Controller extends Controller
             'tanggal'             => 'required|date',
             'tipe_kegiatan'       => 'required|in:loading_lokal,loading_export,unloading_lokal,unloading_import',
             'produk'              => 'required|string|max:120',
-            'asal_tujuan'         => 'nullable|string|max:255',
+            'asal_tujuan'         => 'required|string|max:255',
             'jenis_kendaraan_id'  => [
                 'required',
                 Rule::exists('jenis_kendaraans', 'id')->where('is_active', true),
             ],
             'no_polisi'           => 'required|string|max:20',
-            'tipe_kendaraan'      => 'nullable|in:bak_terbuka,tangki,umum,box,container',
-            'tahun_kendaraan'     => 'nullable|integer|min:1950|max:' . (int) date('Y'),
+            'tipe_kendaraan'      => 'required|in:bak_terbuka,tangki,umum,box,container',
+            'tahun_kendaraan'     => 'required|integer|min:1950|max:' . (int) date('Y'),
             'transporter_id'      => [
                 'required',
                 Rule::exists('transporters', 'id')->where('is_active', true),
