@@ -32,35 +32,6 @@ class CreateSettingsTable extends Migration
     private function seedDefaultSettings()
     {
         $settings = [
-            // VCF Settings
-            [
-                'key' => 'vcf.show_produk_lainnya',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'vcf',
-                'label' => 'Tampilkan Produk Lainnya',
-                'description' => 'Menampilkan opsi "Produk Lainnya" di form registrasi VCF',
-                'is_active' => true,
-            ],
-            [
-                'key' => 'vcf.required_all_fields',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'vcf',
-                'label' => 'Semua Field Wajib Diisi',
-                'description' => 'Membuat semua field transaksi VCF wajib diisi',
-                'is_active' => true,
-            ],
-            [
-                'key' => 'vcf.enable_qr_signature',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'vcf',
-                'label' => 'Aktifkan QR Code Tanda Tangan',
-                'description' => 'Generate QR code otomatis saat petugas submit form',
-                'is_active' => true,
-            ],
-            
             // Print Settings
             [
                 'key' => 'print.company_name',
@@ -87,15 +58,6 @@ class CreateSettingsTable extends Migration
                 'group' => 'print',
                 'label' => 'Font Utama',
                 'description' => 'Font utama untuk dokumen print',
-                'is_active' => true,
-            ],
-            [
-                'key' => 'print.show_qr_signature',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'print',
-                'label' => 'Tampilkan QR Signature di Print',
-                'description' => 'Menampilkan QR code tanda tangan di dokumen print',
                 'is_active' => true,
             ],
             [

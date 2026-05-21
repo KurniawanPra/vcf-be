@@ -16,35 +16,6 @@ class SettingsSeeder extends Seeder
         }
 
         $defaultSettings = [
-            // VCF Settings
-            [
-                'key' => 'vcf.show_produk_lainnya',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'vcf',
-                'label' => 'Tampilkan Produk Lainnya',
-                'description' => 'Tampilkan opsi "Lainnya" di pilihan produk',
-                'is_active' => true,
-            ],
-            [
-                'key' => 'vcf.required_all_fields',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'vcf',
-                'label' => 'Semua Field Wajib Diisi',
-                'description' => 'Aktifkan validasi untuk semua field VCF',
-                'is_active' => true,
-            ],
-            [
-                'key' => 'vcf.enable_qr_signature',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'vcf',
-                'label' => 'Aktifkan QR Signature',
-                'description' => 'Generate QR code otomatis saat submit VCF',
-                'is_active' => true,
-            ],
-            
             // Print Settings
             [
                 'key' => 'print.company_name',
@@ -62,15 +33,6 @@ class SettingsSeeder extends Seeder
                 'group' => 'print',
                 'label' => 'Alamat Perusahaan',
                 'description' => 'Alamat perusahaan di dokumen print',
-                'is_active' => true,
-            ],
-            [
-                'key' => 'print.show_qr_signature',
-                'value' => 'true',
-                'type' => 'boolean',
-                'group' => 'print',
-                'label' => 'Tampilkan QR Signature',
-                'description' => 'Tampilkan QR code tanda tangan di dokumen print',
                 'is_active' => true,
             ],
             [

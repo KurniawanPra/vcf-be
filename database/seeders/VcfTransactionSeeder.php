@@ -14,6 +14,7 @@ class VcfTransactionSeeder extends Seeder
         $isPgsql = $connection->getDriverName() === 'pgsql';
 
         $tables = [
+            'timbangans',
             'vcf_kelengkapan_supirs', 'vcf_muatan_dibawas', 'vcf_muatan_diisis',
             'vcf_pemeriksaan_masuks', 'vcf_beban_tambahan_masuks', 'vcf_segel_masuks', 'vcf_nomor_segel_masuks',
             'vcf_pemeriksaan_keluars', 'vcf_beban_tambahan_keluars', 'vcf_segel_keluars', 'vcf_nomor_segel_keluars',
@@ -56,6 +57,14 @@ class VcfTransactionSeeder extends Seeder
             'id_supir' => 1,
             'no_polisi' => 'B 1234 ABC',
             'no_polisi_asli' => 'B 1234 ABC',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        DB::table('timbangans')->insert([
+            'vcf_id' => $vcf1Id,
+            'bruto_from' => 'WB-001',
+            'tara_from' => 'WB-001',
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -112,6 +121,15 @@ class VcfTransactionSeeder extends Seeder
             'updated_at' => $now,
         ]);
 
+        DB::table('timbangans')->insert([
+            'vcf_id' => $vcf2Id,
+            'bruto_from' => 'WB-002',
+            'tara_from' => 'WB-002',
+            'bruto' => 25000.50,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
         // 3. VCF Tahap Selesai
         $vcf3Id = DB::table('vcfs')->insertGetId([
             'nomor_urut' => '00003',
@@ -137,7 +155,17 @@ class VcfTransactionSeeder extends Seeder
             'created_at' => $now->subDays(1),
             'updated_at' => $now->subDays(1),
         ]);
-        
+
+        DB::table('timbangans')->insert([
+            'vcf_id' => $vcf3Id,
+            'bruto_from' => 'WB-003',
+            'tara_from' => 'WB-003',
+            'bruto' => 30000.75,
+            'tara' => 8000.25,
+            'created_at' => $now->subDays(1),
+            'updated_at' => $now->subDays(1)->addHours(4),
+        ]);
+
         // VCF 3 completes all stages... (omitted for brevity but status is 'selesai')
     }
 }
