@@ -58,10 +58,20 @@ class VcfBagian1Controller extends Controller
             'createdBy:id,nama',
         ]);
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('nomor_urut', 'like', '%' . $request->search . '%')
-                  ->orWhere('no_polisi', 'like', '%' . $request->search . '%');
+                  ->orWhere('no_polisi', 'like', '%' . $request->search . '%')
+                  ->orWhere('produk', 'like', '%' . $request->search . '%')
+                  ->orWhere('tipe_kegiatan', 'like', '%' . $request->search . '%')
+                  ->orWhere('status', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('driver', function ($q) use ($request) {
+                      $q->where('nama_supir', 'like', '%' . $request->search . '%')
+                        ->orWhere('no_sim', 'like', '%' . $request->search . '%');
+                  })
+                  ->orWhereHas('transporter', function ($q) use ($request) {
+                      $q->where('nama_transporter', 'like', '%' . $request->search . '%');
+                  });
             });
         }
 
