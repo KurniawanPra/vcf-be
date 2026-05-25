@@ -10,6 +10,7 @@ use App\Models\VcfSegelKeluar;
 use App\Models\VcfNomorSegelKeluar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
 
 class VcfBagian3Controller extends Controller
 {
@@ -46,15 +47,16 @@ class VcfBagian3Controller extends Controller
             'jenis_beban' => 'required_if:beban_tambahan_ada,true|nullable|string|max:255',
 
             'segel_terpasang' => 'required|boolean',
-            'jumlah_segel' => 'required_if:segel_terpasang,true|nullable|integer|min:1|max:100',
-            'nomor_segel' => 'required_if:segel_terpasang,true|nullable|array',
-            'nomor_segel.*' => 'required|string|max:100',
+            'jumlah_segel' => 'nullable|integer|min:0|max:100',
+            'nomor_segel' => 'nullable|array',
+            'nomor_segel.*' => 'nullable|string|max:100',
 
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
         if ($validated['segel_terpasang'] && !empty($validated['nomor_segel'])) {
-            if (count($validated['nomor_segel']) !== (int) $validated['jumlah_segel']) {
+            $filteredNomorSegel = array_filter($validated['nomor_segel']);
+            if (count($filteredNomorSegel) > 0 && count($filteredNomorSegel) !== (int) $validated['jumlah_segel']) {
                 return response()->json([
                     'message' => 'Jumlah nomor segel harus sama dengan jumlah segel yang diinput.',
                 ], 422);
@@ -81,21 +83,29 @@ class VcfBagian3Controller extends Controller
                 ]);
             }
 
+            // Hapus segel lama jika ada
+            $vcf->segelKeluar()->each(fn($s) => $s->nomorSegel()->delete());
+            $vcf->segelKeluar()->delete();
+
             // Simpan segel (selalu buat record untuk menyimpan keterangan umum)
             if ($validated['segel_terpasang']) {
                 $segel = VcfSegelKeluar::create([
                     'vcf_id' => $vcf->id,
-                    'jumlah_segel' => $validated['jumlah_segel'],
+                    'jumlah_segel' => $validated['jumlah_segel'] ?? count($validated['nomor_segel'] ?? []),
                     'petugas_id' => $request->user()->id,
                     'keterangan' => $validated['keterangan'] ?? null,
                 ]);
 
-                foreach ($validated['nomor_segel'] as $urutan => $nomor) {
-                    VcfNomorSegelKeluar::create([
-                        'segel_keluar_id' => $segel->id,
-                        'urutan' => $urutan + 1,
-                        'nomor_segel' => $nomor,
-                    ]);
+                if (!empty($validated['nomor_segel'])) {
+                    foreach ($validated['nomor_segel'] as $urutan => $nomor) {
+                        if (!empty($nomor)) {
+                            VcfNomorSegelKeluar::create([
+                                'segel_keluar_id' => $segel->id,
+                                'urutan' => $urutan + 1,
+                                'nomor_segel' => $nomor,
+                            ]);
+                        }
+                    }
                 }
             } else {
                 // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
@@ -108,6 +118,8 @@ class VcfBagian3Controller extends Controller
             }
 
             $vcf->update(['status' => 'bagian3_selesai']);
+
+            ActivityLogger::vcfStageDone($vcf, 'Weighbridge Keluar (Bagian 3)');
 
             DB::commit();
 
@@ -147,8 +159,10 @@ class VcfBagian3Controller extends Controller
 
         $vcf->update([
             'status' => 'reject',
-            'catatan' => $vcf->catatan . "\n[REJECTED AT WB KELUAR]: " . $validated['catatan_reject']
+            'keterangan' => trim(($vcf->keterangan ?? '') . "\n[REJECTED AT WB KELUAR]: " . $validated['catatan_reject'])
         ]);
+
+        ActivityLogger::vcfRejected($vcf, $validated['catatan_reject'], 'Weighbridge Keluar');
 
         return response()->json([
             'message' => 'VCF berhasil di-reject.',
@@ -190,9 +204,9 @@ class VcfBagian3Controller extends Controller
             'jenis_beban' => 'nullable|string|max:255',
 
             'segel_terpasang' => 'sometimes|boolean',
-            'jumlah_segel' => 'nullable|integer|min:1|max:100',
+            'jumlah_segel' => 'nullable|integer|min:0|max:100',
             'nomor_segel' => 'nullable|array',
-            'nomor_segel.*' => 'required|string|max:100',
+            'nomor_segel.*' => 'nullable|string|max:100',
 
             'keterangan' => 'nullable|string|max:1000',
         ]);
@@ -227,8 +241,10 @@ class VcfBagian3Controller extends Controller
                 $vcf->segelKeluar()->each(fn($s) => $s->nomorSegel()->delete());
                 $vcf->segelKeluar()->delete();
 
-                if ($validated['segel_terpasang']) {
-                    if (count($validated['nomor_segel'] ?? []) !== (int) $validated['jumlah_segel']) {
+                $segelTerpasang = $validated['segel_terpasang'] ?? false;
+                if ($segelTerpasang) {
+                    $filteredNomorSegel = array_filter($validated['nomor_segel'] ?? []);
+                    if (count($filteredNomorSegel) > 0 && count($filteredNomorSegel) !== (int) ($validated['jumlah_segel'] ?? 0)) {
                         DB::rollBack();
                         return response()->json([
                             'message' => 'Jumlah nomor segel tidak sesuai.',
@@ -237,17 +253,21 @@ class VcfBagian3Controller extends Controller
 
                     $segel = VcfSegelKeluar::create([
                         'vcf_id' => $vcf->id,
-                        'jumlah_segel' => $validated['jumlah_segel'],
+                        'jumlah_segel' => $validated['jumlah_segel'] ?? count($validated['nomor_segel'] ?? []),
                         'petugas_id' => $request->user()->id,
                         'keterangan' => $validated['keterangan'] ?? null,
                     ]);
 
-                    foreach ($validated['nomor_segel'] as $urutan => $nomor) {
-                        VcfNomorSegelKeluar::create([
-                            'segel_keluar_id' => $segel->id,
-                            'urutan' => $urutan + 1,
-                            'nomor_segel' => $nomor,
-                        ]);
+                    if (!empty($validated['nomor_segel'])) {
+                        foreach ($validated['nomor_segel'] as $urutan => $nomor) {
+                            if (!empty($nomor)) {
+                                VcfNomorSegelKeluar::create([
+                                    'segel_keluar_id' => $segel->id,
+                                    'urutan' => $urutan + 1,
+                                    'nomor_segel' => $nomor,
+                                ]);
+                            }
+                        }
                     }
                 } else {
                     // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
@@ -261,6 +281,8 @@ class VcfBagian3Controller extends Controller
             }
 
             DB::commit();
+
+            ActivityLogger::vcfUpdated($vcf, []);
 
             return response()->json([
                 'message' => 'VCF Bagian 3 berhasil diperbarui.',

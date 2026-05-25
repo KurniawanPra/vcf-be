@@ -14,6 +14,7 @@ use App\Models\VcfMuatanDiisi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Services\ActivityLogger;
 
 class VcfBagian1Controller extends Controller
 {
@@ -27,6 +28,7 @@ class VcfBagian1Controller extends Controller
         $date = \Carbon\Carbon::parse($dateStr);
 
         // Use database-agnostic ordering
+        /** @var \Illuminate\Database\Connection $connection */
         $connection = DB::connection();
         $castType = $connection->getDriverName() === 'pgsql' ? 'INTEGER' : 'UNSIGNED';
 
@@ -56,6 +58,11 @@ class VcfBagian1Controller extends Controller
             'driver',
             'timbangan',
             'createdBy:id,nama',
+            'vcfKeluar',
+            'segelMasuk.nomorSegel',
+            'segelKeluar.nomorSegel',
+            'bebanTambahanMasuk',
+            'bebanTambahanKeluar',
         ]);
 
         if ($request->filled('search')) {
@@ -95,13 +102,7 @@ class VcfBagian1Controller extends Controller
             }
         }
 
-        if ($request->has('logistik_id')) {
-            // deprecated
-        }
 
-        if ($request->has('produk_id')) {
-            // deprecated
-        }
 
         if ($request->has('tipe_kegiatan')) {
             $query->where('tipe_kegiatan', $request->tipe_kegiatan);
@@ -142,8 +143,10 @@ class VcfBagian1Controller extends Controller
 
         $vcf->update([
             'status' => 'reject',
-            'catatan' => $vcf->catatan . "\n[REJECTED]: " . $validated['catatan_reject']
+            'keterangan' => trim(($vcf->keterangan ?? '') . "\n[REJECTED AT MAIN GATE MASUK]: " . $validated['catatan_reject'])
         ]);
+
+        ActivityLogger::vcfRejected($vcf, $validated['catatan_reject'], 'Main Gate');
 
         return response()->json([
             'message' => 'VCF telah ditolak.',
@@ -181,6 +184,12 @@ class VcfBagian1Controller extends Controller
             'beban_tambahan_ada'  => 'boolean',
             'jenis_beban'         => 'nullable|required_if:beban_tambahan_ada,true|string|max:255',
 
+            // Segel
+            'segel_terpasang'     => 'nullable|boolean',
+            'jumlah_segel'        => 'nullable|integer|min:0',
+            'nomor_segel'         => 'nullable|array',
+            'nomor_segel.*'       => 'nullable|string',
+
             // Kelengkapan supir (optional in Stage 1)
             'kelengkapan_supir'              => 'nullable|array',
             'kelengkapan_supir.*.item_id'    => 'required_with:kelengkapan_supir|exists:item_kelengkapan_supirs,id',
@@ -201,8 +210,18 @@ class VcfBagian1Controller extends Controller
 
             // Keterangan umum (opsional)
             'keterangan'                     => 'nullable|string|max:1000',
-            'bruto_from'                     => 'nullable|numeric|min:0',
-            'tara_from'                      => 'nullable|numeric|min:0',
+            // 'bruto_from'                     => [
+            //     'required',
+            //     'numeric',
+            //     'min:0',
+            //     function ($attribute, $value, $fail) use ($request) {
+            //         if ($request->filled('tara_from') && $value < $request->input('tara_from')) {
+            //             $fail('Bruto tidak boleh lebih kecil dari Tara (Netto negatif).');
+            //         }
+            //     },
+            // ],
+            // 'tara_from'                      => 'required|numeric|min:0',
+            // 'netto_from'                     => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
             'tahun_kendaraan.max'     => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',
@@ -234,6 +253,7 @@ class VcfBagian1Controller extends Controller
             $date = \Carbon\Carbon::parse($tanggalVcf);
 
             // Nomor urut reset bulanan.
+            /** @var \Illuminate\Database\Connection $connection */
             $connection = DB::connection();
             $castType = $connection->getDriverName() === 'pgsql' ? 'INTEGER' : 'UNSIGNED';
 
@@ -256,13 +276,9 @@ class VcfBagian1Controller extends Controller
                 'transporter_id'     => $validated['transporter_id'],
                 'driver_id'          => $validated['driver_id'],
                 'jam_masuk'          => $validated['jam_masuk'],
-                'muatan_dibawa'      => $validated['muatan_dibawa'] ?? null,
-                'muatan_diisi'       => $validated['muatan_diisi'] ?? null,
                 'keterangan'         => $validated['keterangan'] ?? null,
                 'created_by'         => $request->user()->id,
                 'status'             => 'bagian1_selesai',
-                'qr_signature_main_gate' => $request->qr_signature ?? null,
-                'signed_at_main_gate' => $request->qr_signature ? now() : null,
             ]);
 
             // Simpan kelengkapan supir
@@ -308,14 +324,40 @@ class VcfBagian1Controller extends Controller
                 ]);
             }
 
+            // Simpan segel masuk jika unloading
+            if (str_starts_with($validated['tipe_kegiatan'], 'unloading')) {
+                $segelTerpasang = $request->input('segel_terpasang', false);
+                $segel = \App\Models\VcfSegelMasuk::create([
+                    'vcf_id' => $vcf->id,
+                    'jumlah_segel' => $segelTerpasang ? ($request->input('jumlah_segel') ?? count($request->input('nomor_segel') ?? [])) : 0,
+                    'petugas_id' => $request->user()->id,
+                    'keterangan' => null, // Segel/WB Masuk keterangan is separate from registration keterangan
+                ]);
+
+                if ($segelTerpasang && $request->has('nomor_segel') && is_array($request->input('nomor_segel'))) {
+                    foreach ($request->input('nomor_segel') as $urutan => $nomor) {
+                        if (!empty($nomor)) {
+                            \App\Models\VcfNomorSegelMasuk::create([
+                                'segel_masuk_id' => $segel->id,
+                                'urutan' => $urutan + 1,
+                                'nomor_segel' => $nomor,
+                            ]);
+                        }
+                    }
+                }
+            }
+
             // Create scale record
             \App\Models\Timbangan::create([
                 'vcf_id'     => $vcf->id,
                 'bruto_from' => $validated['bruto_from'] ?? null,
                 'tara_from'  => $validated['tara_from'] ?? null,
+                'netto_from' => $validated['netto_from'] ?? null,
             ]);
 
             DB::commit();
+
+            ActivityLogger::vcfCreated($vcf);
 
             return response()->json([
                 'message' => 'VCF Bagian 1 berhasil disimpan.',
@@ -381,6 +423,12 @@ class VcfBagian1Controller extends Controller
             ],
             'jam_masuk'           => 'sometimes|required|date_format:H:i',
 
+            // Segel
+            'segel_terpasang'     => 'nullable|boolean',
+            'jumlah_segel'        => 'nullable|integer|min:0',
+            'nomor_segel'         => 'nullable|array',
+            'nomor_segel.*'       => 'nullable|string',
+
             'kelengkapan_supir'                  => 'sometimes|array',
             'kelengkapan_supir.*.item_id'        => 'required|exists:item_kelengkapan_supirs,id',
             'kelengkapan_supir.*.nilai'          => 'required|boolean',
@@ -397,8 +445,18 @@ class VcfBagian1Controller extends Controller
             'muatan_diisi.*.keterangan'          => 'nullable|string',
 
             'keterangan'                         => 'nullable|string|max:1000',
-            'bruto_from'                         => 'nullable|numeric|min:0',
+            'bruto_from'                         => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->filled('tara_from') && $value < $request->input('tara_from')) {
+                        $fail('Bruto tidak boleh lebih kecil dari Tara (Netto negatif).');
+                    }
+                },
+            ],
             'tara_from'                          => 'nullable|numeric|min:0',
+            'netto_from'                         => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
             'tahun_kendaraan.max'     => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',
@@ -454,11 +512,12 @@ class VcfBagian1Controller extends Controller
                 }
             }
 
-            if (array_key_exists('bruto_from', $validated) || array_key_exists('tara_from', $validated)) {
+            if (array_key_exists('bruto_from', $validated) || array_key_exists('tara_from', $validated) || array_key_exists('netto_from', $validated)) {
                 $timbanganData = [];
                 if (array_key_exists('bruto_from', $validated)) $timbanganData['bruto_from'] = $validated['bruto_from'];
                 if (array_key_exists('tara_from', $validated)) $timbanganData['tara_from'] = $validated['tara_from'];
-                
+                if (array_key_exists('netto_from', $validated)) $timbanganData['netto_from'] = $validated['netto_from'];
+
                 $timbangan = \App\Models\Timbangan::where('vcf_id', $vcf->id)->first();
                 if ($timbangan) {
                     $timbangan->update($timbanganData);
@@ -468,7 +527,52 @@ class VcfBagian1Controller extends Controller
                 }
             }
 
+            // Simpan/update segel masuk jika unloading
+            $tipeKegiatan = $validated['tipe_kegiatan'] ?? $vcf->tipe_kegiatan;
+            if ($tipeKegiatan && str_starts_with($tipeKegiatan, 'unloading')) {
+                if ($request->has('segel_terpasang')) {
+                    // Delete old segel & nomor segel
+                    $vcf->segelMasuk()->each(fn($s) => $s->nomorSegel()->delete());
+                    $vcf->segelMasuk()->delete();
+
+                    $segelTerpasang = $request->input('segel_terpasang', false);
+                    $segel = \App\Models\VcfSegelMasuk::create([
+                        'vcf_id' => $vcf->id,
+                        'jumlah_segel' => $segelTerpasang ? ($request->input('jumlah_segel') ?? count($request->input('nomor_segel') ?? [])) : 0,
+                        'petugas_id' => $request->user()->id,
+                        'keterangan' => null, // Segel/WB Masuk keterangan is separate from registration keterangan
+                    ]);
+
+                    if ($segelTerpasang && $request->has('nomor_segel') && is_array($request->input('nomor_segel'))) {
+                        foreach ($request->input('nomor_segel') as $urutan => $nomor) {
+                            if (!empty($nomor)) {
+                                \App\Models\VcfNomorSegelMasuk::create([
+                                    'segel_masuk_id' => $segel->id,
+                                    'urutan' => $urutan + 1,
+                                    'nomor_segel' => $nomor,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update or create timbangan data
+            if (array_key_exists('bruto_from', $validated) || array_key_exists('tara_from', $validated) || array_key_exists('netto_from', $validated)) {
+                $timbangan = \App\Models\Timbangan::firstOrCreate(['vcf_id' => $vcf->id]);
+                $timbanganUpdate = [];
+                if (array_key_exists('bruto_from', $validated)) $timbanganUpdate['bruto_from'] = $validated['bruto_from'];
+                if (array_key_exists('tara_from', $validated)) $timbanganUpdate['tara_from'] = $validated['tara_from'];
+                if (array_key_exists('netto_from', $validated)) $timbanganUpdate['netto_from'] = $validated['netto_from'];
+                
+                if (!empty($timbanganUpdate)) {
+                    $timbangan->update($timbanganUpdate);
+                }
+            }
+
             DB::commit();
+
+            ActivityLogger::vcfUpdated($vcf, $fillable);
 
             return response()->json([
                 'message' => 'VCF Bagian 1 berhasil diperbarui.',

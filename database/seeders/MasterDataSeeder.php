@@ -11,6 +11,7 @@ class MasterDataSeeder extends Seeder
     public function run()
     {
         // Disable foreign key checks for both MySQL and PostgreSQL
+        /** @var \Illuminate\Database\Connection $connection */
         $connection = DB::connection();
         if ($connection->getDriverName() === 'pgsql') {
             DB::statement('SET CONSTRAINTS ALL DEFERRED;');
@@ -190,18 +191,22 @@ class MasterDataSeeder extends Seeder
         ]);
 
         // 9. Item Pemeriksaan Masuk (Sistem tipe_jawaban terbaru)
+        // tampil_pada: 'semua' | 'loading' | 'unloading'
         DB::table('item_pemeriksaan_masuks')->insert([
-            ['id' => 1, 'nama_item' => 'Kondisi Tangki',           'kode' => 'TKM', 'tipe_jawaban' => 'Bagus,Tidak Bagus',         'has_detail' => false, 'keterangan_detail' => null, 'urutan' => 1, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['id' => 2, 'nama_item' => 'Penutup Valve Keluar Minyak','kode' => 'PVM', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => false, 'keterangan_detail' => null, 'urutan' => 2, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['id' => 3, 'nama_item' => 'Beban Tambahan',           'kode' => 'BTM', 'tipe_jawaban' => 'Ada,Tidak Ada',             'has_detail' => true,  'keterangan_detail' => 'Jenis Beban',   'urutan' => 3, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['id' => 4, 'nama_item' => 'Segel',                    'kode' => 'SGM', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => true,  'keterangan_detail' => 'Nomor Segel',   'urutan' => 4, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 1, 'nama_item' => 'Kondisi Tangki',            'kode' => 'TKM', 'tipe_jawaban' => 'Bagus,Tidak Bagus',         'has_detail' => false, 'keterangan_detail' => null,           'tampil_pada' => 'semua',      'urutan' => 1, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'nama_item' => 'Penutup Valve Keluar Minyak','kode' => 'PVM', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => false, 'keterangan_detail' => null,           'tampil_pada' => 'semua',      'urutan' => 2, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 3, 'nama_item' => 'Beban Tambahan',            'kode' => 'BTM', 'tipe_jawaban' => 'Ada,Tidak Ada',             'has_detail' => true,  'keterangan_detail' => 'Jenis Beban',  'tampil_pada' => 'semua',      'urutan' => 3, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            // SGM (Segel Masuk) hanya tampil untuk unloading: truk membawa segel dari luar pabrik
+            ['id' => 4, 'nama_item' => 'Segel',                    'kode' => 'SGM', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => true,  'keterangan_detail' => 'Nomor Segel',  'tampil_pada' => 'unloading',  'urutan' => 4, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // 10. Item Pemeriksaan Keluar (Sistem tipe_jawaban terbaru)
+        // tampil_pada: 'semua' | 'loading' | 'unloading'
         DB::table('item_pemeriksaan_keluars')->insert([
-            ['id' => 1, 'nama_item' => 'Kondisi Tangki',  'kode' => 'TKK', 'tipe_jawaban' => 'Kosong,Sisa',               'has_detail' => false, 'keterangan_detail' => null, 'urutan' => 1, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['id' => 2, 'nama_item' => 'Beban Tambahan',  'kode' => 'BTK', 'tipe_jawaban' => 'Ada,Tidak Ada',             'has_detail' => true,  'keterangan_detail' => 'Jenis Beban',  'urutan' => 2, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['id' => 3, 'nama_item' => 'Segel',           'kode' => 'SGK', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => true,  'keterangan_detail' => 'Nomor Segel',  'urutan' => 3, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 1, 'nama_item' => 'Kondisi Tangki',  'kode' => 'TKK', 'tipe_jawaban' => 'Kosong,Sisa',               'has_detail' => false, 'keterangan_detail' => null,           'tampil_pada' => 'semua',    'urutan' => 1, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'nama_item' => 'Beban Tambahan',  'kode' => 'BTK', 'tipe_jawaban' => 'Ada,Tidak Ada',             'has_detail' => true,  'keterangan_detail' => 'Jenis Beban',  'tampil_pada' => 'semua',    'urutan' => 2, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            // SGK (Segel Keluar) hanya tampil untuk loading: truk membawa segel keluar pabrik
+            ['id' => 3, 'nama_item' => 'Segel',           'kode' => 'SGK', 'tipe_jawaban' => 'Terpasang,Tidak Terpasang', 'has_detail' => true,  'keterangan_detail' => 'Nomor Segel',  'tampil_pada' => 'loading',  'urutan' => 3, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // Reset PostgreSQL sequences after seeding with explicit IDs

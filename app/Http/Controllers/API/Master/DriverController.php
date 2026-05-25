@@ -7,6 +7,7 @@ use App\Models\Driver;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
 
 class DriverController extends Controller
 {
@@ -110,6 +111,7 @@ class DriverController extends Controller
     public function destroy(Driver $driver)
     {
         try {
+            $label = $driver->nama_supir;
             $driver->delete();
             return response()->json(['message' => 'Supir berhasil dihapus secara permanen.']);
         } catch (QueryException $e) {

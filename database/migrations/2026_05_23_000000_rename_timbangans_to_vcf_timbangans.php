@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddNettoToTimbangansTable extends Migration
+class RenameTimbangansToVcfTimbangans extends Migration
 {
     /**
      * Run the migrations.
@@ -13,9 +13,7 @@ class AddNettoToTimbangansTable extends Migration
      */
     public function up()
     {
-        Schema::table('vcf_timbangans', function (Blueprint $table) {
-            $table->decimal('netto', 10, 2)->nullable()->after('tara');
-        });
+        Schema::rename('timbangans', 'vcf_timbangans');
     }
 
     /**
@@ -25,9 +23,6 @@ class AddNettoToTimbangansTable extends Migration
      */
     public function down()
     {
-        Schema::table('vcf_timbangans', function (Blueprint $table) {
-            $table->dropColumn('netto');
-        });
+        Schema::rename('vcf_timbangans', 'timbangans');
     }
 }
-

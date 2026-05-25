@@ -7,6 +7,7 @@ use App\Models\Driver;
 use App\Models\Violation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
 
 class ViolationController extends Controller
 {
@@ -133,6 +134,10 @@ class ViolationController extends Controller
             ]));
 
             DB::commit();
+
+            $targetLabel = $violation->driver?->nama_supir ?? $violation->no_polisi ?? 'N/A';
+            ActivityLogger::violationCreated($violation, $targetLabel);
+
             return response()->json([
                 'message' => 'Pelanggaran berhasil dicatat.',
                 'data'    => $violation->load(['driver:id,nama_supir', 'createdBy:id,nama']),
@@ -184,7 +189,9 @@ class ViolationController extends Controller
     public function destroy(Violation $violation)
     {
         try {
+            $targetLabel = $violation->driver?->nama_supir ?? $violation->no_polisi ?? 'N/A';
             $violation->delete();
+            ActivityLogger::violationDeleted($targetLabel);
             return response()->json(['message' => 'Pelanggaran berhasil dihapus.', 'success' => true]);
         } catch (\Exception $e) {
             return response()->json(['errMsg' => $e->getMessage(), 'success' => false], 500);
@@ -200,6 +207,12 @@ class ViolationController extends Controller
             'status' => 'required|in:normal,warning,blacklist',
         ]);
         $driver->update(['status' => $validated['status']]);
+        ActivityLogger::log(
+            'master.driver.status_updated', 'master', 'updated', $driver,
+            "Status driver diperbarui: {$driver->nama_supir} → {$validated['status']}",
+            ['status' => $validated['status']],
+            $driver->nama_supir
+        );
         return response()->json([
             'message' => 'Status driver diperbarui.',
             'data'    => $driver->only(['id', 'nama_supir', 'status']),

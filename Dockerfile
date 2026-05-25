@@ -81,3 +81,4 @@ EXPOSE 80
 
 # Entrypoint script
 CMD php artisan package:discover --ansi 2>&1 || true && php artisan migrate --force 2>&1 || true && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && apache2-foreground
+

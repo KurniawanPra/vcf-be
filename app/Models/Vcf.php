@@ -20,14 +20,12 @@ class Vcf extends Model
         'asal_tujuan',
         'jenis_kendaraan_id',
         'no_polisi',
-
         'tipe_kendaraan',
         'tahun_kendaraan',
         'transporter_id',
         'driver_id',
         'jam_masuk',
         'status',
-        'catatan',
         'keterangan',
         'created_by'
     ];

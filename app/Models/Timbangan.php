@@ -10,13 +10,14 @@ class Timbangan extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
-    protected $table = 'timbangans';
+    protected $table = 'vcf_timbangans';
 
     protected $fillable = [
         'vcf_id',
         'bruto_from',
-        'bruto',
         'tara_from',
+        'netto_from',
+        'bruto',
         'tara',
         'netto',
     ];

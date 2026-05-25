@@ -10,6 +10,7 @@ use App\Models\VcfSegelMasuk;
 use App\Models\VcfNomorSegelMasuk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
 
 class VcfBagian2Controller extends Controller
 {
@@ -92,6 +93,10 @@ class VcfBagian2Controller extends Controller
                 ]);
             }
 
+            // Hapus segel lama jika ada (misal dari Bagian 1)
+            $vcf->segelMasuk()->each(fn($s) => $s->nomorSegel()->delete());
+            $vcf->segelMasuk()->delete();
+
             // Simpan segel (selalu buat record untuk menyimpan keterangan umum)
             if ($validated['segel_terpasang']) {
                 $segel = VcfSegelMasuk::create([
@@ -101,12 +106,14 @@ class VcfBagian2Controller extends Controller
                     'keterangan' => $validated['keterangan'] ?? null,
                 ]);
 
-                foreach ($validated['nomor_segel'] as $urutan => $nomor) {
-                    VcfNomorSegelMasuk::create([
-                        'segel_masuk_id' => $segel->id,
-                        'urutan' => $urutan + 1,
-                        'nomor_segel' => $nomor,
-                    ]);
+                if (!empty($validated['nomor_segel'])) {
+                    foreach ($validated['nomor_segel'] as $urutan => $nomor) {
+                        VcfNomorSegelMasuk::create([
+                            'segel_masuk_id' => $segel->id,
+                            'urutan' => $urutan + 1,
+                            'nomor_segel' => $nomor,
+                        ]);
+                    }
                 }
             } else {
                 // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
@@ -120,6 +127,8 @@ class VcfBagian2Controller extends Controller
 
             // Update status VCF
             $vcf->update(['status' => 'bagian2_selesai']);
+
+            ActivityLogger::vcfStageDone($vcf, 'Weighbridge Masuk (Bagian 2)');
 
             DB::commit();
 
@@ -159,8 +168,10 @@ class VcfBagian2Controller extends Controller
 
         $vcf->update([
             'status' => 'reject',
-            'catatan' => $vcf->catatan . "\n[REJECTED AT WB MASUK]: " . $validated['catatan_reject']
+            'keterangan' => trim(($vcf->keterangan ?? '') . "\n[REJECTED AT WB MASUK]: " . $validated['catatan_reject'])
         ]);
+
+        ActivityLogger::vcfRejected($vcf, $validated['catatan_reject'], 'Weighbridge Masuk');
 
         return response()->json([
             'message' => 'VCF berhasil di-reject.',
@@ -274,6 +285,8 @@ class VcfBagian2Controller extends Controller
             }
 
             DB::commit();
+
+            ActivityLogger::vcfUpdated($vcf, []);
 
             return response()->json([
                 'message' => 'VCF Bagian 2 berhasil diperbarui.',

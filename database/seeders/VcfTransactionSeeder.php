@@ -14,7 +14,7 @@ class VcfTransactionSeeder extends Seeder
         $isPgsql = $connection->getDriverName() === 'pgsql';
 
         $tables = [
-            'timbangans',
+            'vcf_timbangans',
             'vcf_kelengkapan_supirs', 'vcf_muatan_dibawas', 'vcf_muatan_diisis',
             'vcf_pemeriksaan_masuks', 'vcf_beban_tambahan_masuks', 'vcf_segel_masuks', 'vcf_nomor_segel_masuks',
             'vcf_pemeriksaan_keluars', 'vcf_beban_tambahan_keluars', 'vcf_segel_keluars', 'vcf_nomor_segel_keluars',
@@ -61,7 +61,7 @@ class VcfTransactionSeeder extends Seeder
             'updated_at' => $now,
         ]);
 
-        DB::table('timbangans')->insert([
+        DB::table('vcf_timbangans')->insert([
             'vcf_id' => $vcf1Id,
             'bruto_from' => 'WB-001',
             'tara_from' => 'WB-001',
@@ -121,7 +121,7 @@ class VcfTransactionSeeder extends Seeder
             'updated_at' => $now,
         ]);
 
-        DB::table('timbangans')->insert([
+        DB::table('vcf_timbangans')->insert([
             'vcf_id' => $vcf2Id,
             'bruto_from' => 'WB-002',
             'tara_from' => 'WB-002',
@@ -156,7 +156,7 @@ class VcfTransactionSeeder extends Seeder
             'updated_at' => $now->subDays(1),
         ]);
 
-        DB::table('timbangans')->insert([
+        DB::table('vcf_timbangans')->insert([
             'vcf_id' => $vcf3Id,
             'bruto_from' => 'WB-003',
             'tara_from' => 'WB-003',

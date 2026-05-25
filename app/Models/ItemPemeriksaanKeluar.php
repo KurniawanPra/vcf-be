@@ -18,6 +18,7 @@ class ItemPemeriksaanKeluar extends Model
         'tipe_jawaban',
         'has_detail',
         'keterangan_detail',
+        'tampil_pada',
         'urutan',
         'is_active'
     ];

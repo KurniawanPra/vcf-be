@@ -4,30 +4,19 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddNettoToTimbangansTable extends Migration
+class AddNettoFromToVcfTimbangansTable extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up()
     {
         Schema::table('vcf_timbangans', function (Blueprint $table) {
-            $table->decimal('netto', 10, 2)->nullable()->after('tara');
+            $table->decimal('netto_from', 15, 2)->nullable()->after('tara_from');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down()
     {
         Schema::table('vcf_timbangans', function (Blueprint $table) {
-            $table->dropColumn('netto');
+            $table->dropColumn('netto_from');
         });
     }
 }
-

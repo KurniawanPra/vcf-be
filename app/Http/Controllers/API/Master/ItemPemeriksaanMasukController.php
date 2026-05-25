@@ -35,22 +35,29 @@ class ItemPemeriksaanMasukController extends Controller
 
             if ($request->has('is_active')) {
                 $query->where('is_active', $request->boolean('is_active'));
-            } 
+            }
+
+            // Filter berdasarkan tipe_kegiatan VCF (loading/unloading)
+            if ($request->has('tipe_kegiatan')) {
+                $tipe = $request->tipe_kegiatan; // 'loading' atau 'unloading'
+                $query->where(function ($q) use ($tipe) {
+                    $q->where('tampil_pada', 'semua')
+                      ->orWhere('tampil_pada', $tipe);
+                });
+            }
 
             $data = $query->orderBy('urutan', 'asc')->get();
 
-            
-
             return response()->json([
-                'data' => $data,
+                'data'    => $data,
                 'message' => $this->messageAll
             ], 200);
 
         } catch (QueryException $e) {
             return response()->json([
                 'message' => $this->messageFail,
-                'err' => $e->getTrace()[0],
-                'errMsg' => $e->getMessage(),
+                'err'     => $e->getTrace()[0],
+                'errMsg'  => $e->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -66,6 +73,7 @@ class ItemPemeriksaanMasukController extends Controller
                 'tipe_jawaban'       => 'required|string',
                 'has_detail'         => 'boolean',
                 'keterangan_detail'  => 'nullable|string|max:255',
+                'tampil_pada'        => 'in:semua,loading,unloading',
                 'is_active'          => 'boolean',
             ]);
 
@@ -90,6 +98,7 @@ class ItemPemeriksaanMasukController extends Controller
                 'tipe_jawaban'      => $validated['tipe_jawaban'],
                 'has_detail'        => $validated['has_detail'] ?? false,
                 'keterangan_detail' => $validated['keterangan_detail'] ?? null,
+                'tampil_pada'       => $validated['tampil_pada'] ?? 'semua',
                 'urutan'            => $validated['urutan'],
                 'is_active'         => $validated['is_active'] ?? true,
             ]);
@@ -132,6 +141,7 @@ class ItemPemeriksaanMasukController extends Controller
                 'tipe_jawaban'      => 'sometimes|required|string',
                 'has_detail'        => 'boolean',
                 'keterangan_detail' => 'nullable|string|max:255',
+                'tampil_pada'       => 'in:semua,loading,unloading',
                 'urutan'            => 'sometimes|required|integer',
                 'is_active'         => 'boolean',
             ]);

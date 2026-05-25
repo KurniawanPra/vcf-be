@@ -13,7 +13,7 @@ class CreateTimbangansTable extends Migration
      */
     public function up()
     {
-        Schema::create('timbangans', function (Blueprint $table) {
+        Schema::create('vcf_timbangans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('vcf_id')->constrained()->cascadeOnDelete();
             $table->string('bruto_from')->nullable();
@@ -31,6 +31,6 @@ class CreateTimbangansTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('timbangans');
+        Schema::dropIfExists('vcf_timbangans');
     }
 }

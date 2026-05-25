@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Services\ActivityLogger;
 
 class SettingController extends Controller
 {
@@ -117,9 +118,11 @@ class SettingController extends Controller
         foreach ($validated['settings'] as $item) {
             $setting = Setting::where('key', $item['key'])->first();
             if ($setting) {
+                $oldVal = $setting->value;
                 $setting->value = $this->prepareValue($item['value'] ?? '', $setting->type);
                 $setting->save();
                 $updated[] = $setting->key;
+                ActivityLogger::settingUpdated($setting->key, $oldVal, $item['value']);
             }
         }
 
@@ -146,12 +149,16 @@ class SettingController extends Controller
             $setting->is_active = $validated['is_active'];
         }
 
+        $oldVal = $setting->value;
+
         // Always update value (even if null/empty) as long as the key exists in request
         if ($request->has('value')) {
             $setting->value = $this->prepareValue($validated['value'] ?? '', $setting->type);
         }
 
         $setting->save();
+
+        ActivityLogger::settingUpdated($key, $oldVal, $validated['value'] ?? null);
 
         return response()->json([
             'message' => 'Setting updated successfully',

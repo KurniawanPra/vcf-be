@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Services\ActivityLogger;
 
 class AuthController extends Controller
 {
@@ -36,6 +37,8 @@ class AuthController extends Controller
 
         $token = $user->createToken('vcf-token', [$user->role])->plainTextToken;
 
+        ActivityLogger::authLogin($user);
+
         return response()->json([
             'message' => 'Login berhasil.',
             'token'   => $token,
@@ -53,6 +56,8 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        $user = $request->user();
+        ActivityLogger::authLogout($user);
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logout berhasil.']);

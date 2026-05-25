@@ -12,33 +12,35 @@ class DashboardController extends Controller
     public function getStats()
     {
         try {
+            $today = now()->toDateString();
+            
             $stats = [
-                'total'   => Vcf::count(),
-                'selesai' => Vcf::where('status', 'selesai')->count(),
-                'proses'  => Vcf::whereNotIn('status', ['selesai', 'reject'])->count(),
-                'reject'  => Vcf::where('status', 'reject')->count(),
+                'total'         => Vcf::count(),
+                'today'         => Vcf::whereDate('tanggal', $today)->count(),
+                'active'        => Vcf::whereNotIn('status', ['selesai', 'reject'])->count(),
+                'system_speed'  => $this->getSystemSpeed(),
             ];
 
-            $recentActivity = Vcf::with(['driver', 'transporter'])
-                ->orderBy('updated_at', 'desc')
-                ->limit(5)
-                ->get()
-                ->map(function($vcf) {
-                    return [
-                        'id' => $vcf->id,
-                        'nomor_urut' => $vcf->nomor_urut,
-                        'status' => $vcf->status,
-                        'driver' => $vcf->driver->nama_supir ?? 'Unknown',
-                        'updated_at' => $vcf->updated_at->diffForHumans(),
-                    ];
-                });
-
-            return response()->json([
-                'stats' => $stats,
-                'recent_activity' => $recentActivity
-            ]);
+            return response()->json($stats);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to fetch dashboard stats'], 500);
+        }
+    }
+
+    private function getSystemSpeed()
+    {
+        try {
+            $startTime = microtime(true);
+            
+            // Simple query to measure response time
+            DB::select('SELECT 1');
+            
+            $endTime = microtime(true);
+            $responseTime = round(($endTime - $startTime) * 1000, 2);
+            
+            return $responseTime;
+        } catch (\Exception $e) {
+            return 0;
         }
     }
 }

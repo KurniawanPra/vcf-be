@@ -7,6 +7,7 @@ use App\Models\Vcf;
 use App\Models\VcfKeluar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
 
 class VcfBagian4Controller extends Controller
 {
@@ -18,7 +19,7 @@ class VcfBagian4Controller extends Controller
     {
         $vcf = Vcf::findOrFail($vcfId);
 
-        if ($vcf->status !== 'bagian3_selesai') {
+        if (!in_array($vcf->status, ['bagian3_selesai', 'weighbridge_keluar'])) {
             return response()->json([
                 'message' => 'Bagian 4 hanya dapat diisi setelah Bagian 3 selesai.',
                 'status_saat_ini' => $vcf->status,
@@ -33,16 +34,20 @@ class VcfBagian4Controller extends Controller
 
         DB::beginTransaction();
         try {
-            $keluar = VcfKeluar::create([
-                'vcf_id'                  => $vcf->id,
-                'jam_keluar'              => $validated['jam_keluar'],
-                'emergency_respon_kontak' => $validated['emergency_respon_kontak'] ?? null,
-                'keterangan'              => $validated['keterangan'] ?? null,
-                'petugas_id'              => $request->user()->id,
-                'waktu_input'             => now(),
-            ]);
+            $keluar = VcfKeluar::updateOrCreate(
+                ['vcf_id' => $vcf->id],
+                [
+                    'jam_keluar'              => $validated['jam_keluar'],
+                    'emergency_respon_kontak' => $validated['emergency_respon_kontak'] ?? null,
+                    'keterangan'              => $validated['keterangan'] ?? null,
+                    'petugas_id'              => $request->user()->id,
+                    'waktu_input'             => now(),
+                ]
+            );
 
             $vcf->update(['status' => 'weighbridge_keluar']);
+
+            ActivityLogger::vcfStageDone($vcf, 'Main Gate Keluar (Bagian 4)');
 
             DB::commit();
 
@@ -74,6 +79,8 @@ class VcfBagian4Controller extends Controller
 
         $vcf->update(['status' => 'selesai']);
 
+        ActivityLogger::vcfFinalized($vcf);
+
         return response()->json([
             'message' => 'VCF telah selesai. Kendaraan keluar Main Gate.',
             'data'    => $vcf
@@ -88,12 +95,9 @@ class VcfBagian4Controller extends Controller
     {
         $vcf = Vcf::findOrFail($vcfId);
 
-        $user = $request->user();
-        $isAdmin = $user && ($user->role === 'admin');
-
         // Petugas hanya boleh edit sebelum finalisasi (saat status masih weighbridge_keluar).
         // Admin tetap boleh koreksi sesuai kebutuhan.
-        if (! $isAdmin) {
+        if (! $this->isAdmin()) {
             if (in_array($vcf->status, ['selesai', 'reject'])) {
                 return response()->json([
                     'message' => 'Bagian 4 tidak dapat diedit karena VCF sudah final/ditolak. Status VCF: ' . $vcf->status,

@@ -23,10 +23,14 @@ use App\Http\Controllers\API\VCF\VcfBagian1Controller;
 use App\Http\Controllers\API\VCF\VcfBagian2Controller;
 use App\Http\Controllers\API\VCF\VcfBagian3Controller;
 use App\Http\Controllers\API\VCF\VcfBagian4Controller;
+use App\Http\Controllers\API\VCF\VcfSegelController;
 use App\Http\Controllers\API\TimbanganController;
 
 // Settings
 use App\Http\Controllers\API\SettingController;
+
+// Activity Logs
+use App\Http\Controllers\API\ActivityLogController;
 use App\Http\Controllers\API\Master\ViolationController;
 
 /*
@@ -147,13 +151,29 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('{vcfId}/bagian4', [VcfBagian4Controller::class, 'update']);
             Route::post('{vcfId}/finalize', [VcfBagian4Controller::class, 'finalize']);
 
+            // Segel (standalone endpoints)
+            Route::post('{vcfId}/segel-masuk', [VcfSegelController::class, 'storeMasuk']);
+            Route::post('{vcfId}/segel-keluar', [VcfSegelController::class, 'storeKeluar']);
+
             // Timbangan
             Route::post('timbangan', [TimbanganController::class, 'store']);
             Route::get('{vcfId}/timbangan', [TimbanganController::class, 'show']);
             Route::post('{vcfId}/timbangan/bruto', [TimbanganController::class, 'updateBruto']);
             Route::post('{vcfId}/timbangan/tara', [TimbanganController::class, 'updateTara']);
+            Route::put('{vcfId}/timbangan/petugas', [TimbanganController::class, 'updatePetugas']);
             Route::put('{vcfId}/timbangan/admin', [TimbanganController::class, 'updateAdmin'])->middleware('admin');
         });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('activity-logs')->middleware('petugas')->group(function () {
+        Route::get('/', [ActivityLogController::class, 'index']);
+        Route::get('/stats', [ActivityLogController::class, 'stats']);
+        Route::get('/{id}', [ActivityLogController::class, 'show']);
     });
 
     /*
