@@ -30,6 +30,12 @@ class VcfBagian3Controller extends Controller
     {
         $vcf = Vcf::findOrFail($vcfId);
 
+        if ($vcf->driver && $vcf->driver->status === 'blacklist') {
+            return response()->json([
+                'message' => 'Driver ini dalam status BLACKLIST. Transaksi VCF tidak dapat dilanjutkan.',
+            ], 422);
+        }
+
         if (!in_array($vcf->status, ['bagian2_selesai', 'loading_unloading_selesai'])) {
             return response()->json([
                 'message' => 'Bagian 3 hanya dapat diisi setelah proses Loading/Unloading atau Timbangan Masuk selesai.',
@@ -159,6 +165,7 @@ class VcfBagian3Controller extends Controller
 
         $vcf->update([
             'status' => 'reject',
+            'catatan' => trim(($vcf->catatan ?? '') . "\n[REJECTED AT WB KELUAR]: " . $validated['catatan_reject']),
             'keterangan' => trim(($vcf->keterangan ?? '') . "\n[REJECTED AT WB KELUAR]: " . $validated['catatan_reject'])
         ]);
 
@@ -179,6 +186,12 @@ class VcfBagian3Controller extends Controller
     public function update(Request $request, int $vcfId)
     {
         $vcf = Vcf::findOrFail($vcfId);
+
+        if ($vcf->driver && $vcf->driver->status === 'blacklist') {
+            return response()->json([
+                'message' => 'Driver ini dalam status BLACKLIST. Transaksi VCF tidak dapat dilanjutkan.',
+            ], 422);
+        }
 
         // Only admin can edit VCF at any stage. Petugas cannot edit if status is selesai/reject.
         if (in_array($vcf->status, ['selesai', 'reject']) && !$this->isAdmin()) {

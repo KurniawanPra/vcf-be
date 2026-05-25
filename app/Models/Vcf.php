@@ -27,6 +27,7 @@ class Vcf extends Model
         'jam_masuk',
         'status',
         'keterangan',
+        'catatan',
         'created_by'
     ];
 

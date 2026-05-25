@@ -19,6 +19,12 @@ class VcfBagian4Controller extends Controller
     {
         $vcf = Vcf::findOrFail($vcfId);
 
+        if ($vcf->driver && $vcf->driver->status === 'blacklist') {
+            return response()->json([
+                'message' => 'Driver ini dalam status BLACKLIST. Transaksi VCF tidak dapat dilanjutkan.',
+            ], 422);
+        }
+
         if (!in_array($vcf->status, ['bagian3_selesai', 'weighbridge_keluar'])) {
             return response()->json([
                 'message' => 'Bagian 4 hanya dapat diisi setelah Bagian 3 selesai.',
@@ -71,6 +77,12 @@ class VcfBagian4Controller extends Controller
     {
         $vcf = Vcf::findOrFail($vcfId);
 
+        if ($vcf->driver && $vcf->driver->status === 'blacklist') {
+            return response()->json([
+                'message' => 'Driver ini dalam status BLACKLIST. Transaksi VCF tidak dapat dilanjutkan.',
+            ], 422);
+        }
+
         if ($vcf->status !== 'weighbridge_keluar') {
             return response()->json([
                 'message' => 'VCF belum menyelesaikan timbangan keluar.',
@@ -94,6 +106,12 @@ class VcfBagian4Controller extends Controller
     public function update(Request $request, int $vcfId)
     {
         $vcf = Vcf::findOrFail($vcfId);
+
+        if ($vcf->driver && $vcf->driver->status === 'blacklist') {
+            return response()->json([
+                'message' => 'Driver ini dalam status BLACKLIST. Transaksi VCF tidak dapat dilanjutkan.',
+            ], 422);
+        }
 
         // Petugas hanya boleh edit sebelum finalisasi (saat status masih weighbridge_keluar).
         // Admin tetap boleh koreksi sesuai kebutuhan.

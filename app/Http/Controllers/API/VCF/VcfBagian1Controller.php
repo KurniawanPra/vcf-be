@@ -143,6 +143,7 @@ class VcfBagian1Controller extends Controller
 
         $vcf->update([
             'status' => 'reject',
+            'catatan' => trim(($vcf->catatan ?? '') . "\n[REJECTED AT MAIN GATE MASUK]: " . $validated['catatan_reject']),
             'keterangan' => trim(($vcf->keterangan ?? '') . "\n[REJECTED AT MAIN GATE MASUK]: " . $validated['catatan_reject'])
         ]);
 

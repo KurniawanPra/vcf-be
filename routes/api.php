@@ -104,14 +104,14 @@ Route::middleware('auth:sanctum')->group(function () {
         // Violations
         Route::middleware('petugas')->group(function () {
             Route::get('violations/check', [ViolationController::class, 'check']);
+            Route::post('violations', [ViolationController::class, 'store']);
+            Route::patch('driver/{driver}/status', [ViolationController::class, 'updateDriverStatus']);
+            Route::patch('drivers/{driver}/status', [ViolationController::class, 'updateDriverStatus']);
         });
         Route::middleware('admin')->group(function () {
             Route::get('violations', [ViolationController::class, 'index']);
-            Route::post('violations', [ViolationController::class, 'store']);
             Route::put('violations/{violation}', [ViolationController::class, 'update']);
             Route::delete('violations/{violation}', [ViolationController::class, 'destroy']);
-            Route::patch('driver/{driver}/status', [ViolationController::class, 'updateDriverStatus']);
-            Route::patch('drivers/{driver}/status', [ViolationController::class, 'updateDriverStatus']);
         });
     });
 
