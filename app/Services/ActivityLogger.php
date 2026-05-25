@@ -88,10 +88,44 @@ class ActivityLogger
     public static function vcfUpdated($vcf, array $changed = []): void
     {
         $label = "VCF #{$vcf->nomor_urut} ({$vcf->no_polisi})";
+        
+        $details = [];
+        foreach ($changed as $key => $val) {
+            // Jika val adalah array yang berisi old dan new secara eksplisit, pakai itu
+            if (is_array($val) && array_key_exists('old', $val) && array_key_exists('new', $val)) {
+                $details[$key] = $val;
+            } else {
+                // Cek apakah key ini merupakan atribut asli dari model VCF
+                $originalAttributes = $vcf->getOriginal();
+                if (array_key_exists($key, $originalAttributes) || array_key_exists($key, $vcf->getAttributes())) {
+                    $oldVal = $vcf->getOriginal($key);
+                    if ($oldVal != $val) {
+                        $details[$key] = [
+                            'old' => $oldVal !== null ? (string)$oldVal : 'kosong',
+                            'new' => $val !== null ? (string)$val : 'kosong'
+                        ];
+                    }
+                } else {
+                    // Jika bukan atribut model asli (log custom relation/tahap), simpan apa adanya
+                    $details[$key] = [
+                        'old' => 'Data Sebelumnya',
+                        'new' => $val !== null ? (string)$val : 'kosong'
+                    ];
+                }
+            }
+        }
+
+        // Buat kalimat deskripsi yang lebih jelas
+        $desc = "VCF diperbarui: {$label}";
+        if (!empty($details)) {
+            $changedKeys = array_keys($details);
+            $desc .= " (Kolom diubah: " . implode(', ', $changedKeys) . ")";
+        }
+
         self::log(
             'vcf.updated', 'vcf', 'updated', $vcf,
-            "VCF diperbarui: {$label}",
-            $changed ? ['changed_fields' => array_keys($changed)] : [],
+            $desc,
+            $details ? ['changes' => $details] : [],
             $label
         );
     }

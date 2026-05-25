@@ -210,18 +210,18 @@ class VcfBagian1Controller extends Controller
 
             // Keterangan umum (opsional)
             'keterangan'                     => 'nullable|string|max:1000',
-            // 'bruto_from'                     => [
-            //     'required',
-            //     'numeric',
-            //     'min:0',
-            //     function ($attribute, $value, $fail) use ($request) {
-            //         if ($request->filled('tara_from') && $value < $request->input('tara_from')) {
-            //             $fail('Bruto tidak boleh lebih kecil dari Tara (Netto negatif).');
-            //         }
-            //     },
-            // ],
-            // 'tara_from'                      => 'required|numeric|min:0',
-            // 'netto_from'                     => 'nullable|numeric|min:0',
+            'bruto_from'                     => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->filled('tara_from') && $value < $request->input('tara_from')) {
+                        $fail('Bruto tidak boleh lebih kecil dari Tara (Netto negatif).');
+                    }
+                },
+            ],
+            'tara_from'                      => 'nullable|numeric|min:0',
+            'netto_from'                     => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
             'tahun_kendaraan.max'     => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',

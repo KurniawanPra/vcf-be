@@ -282,7 +282,13 @@ class VcfBagian3Controller extends Controller
 
             DB::commit();
 
-            ActivityLogger::vcfUpdated($vcf, []);
+            $changes = [];
+            if (isset($validated['pemeriksaan'])) $changes['pemeriksaan_keluar'] = 'Pemeriksaan checklist diperbarui';
+            if (isset($validated['beban_tambahan_ada'])) $changes['beban_tambahan_keluar'] = $validated['beban_tambahan_ada'] ? 'Ada (' . ($validated['jenis_beban'] ?? '') . ')' : 'Tidak ada';
+            if (isset($validated['segel_terpasang'])) $changes['segel_keluar'] = $validated['segel_terpasang'] ? 'Terpasang (' . ($validated['jumlah_segel'] ?? 0) . ' segel)' : 'Tidak terpasang';
+            if (isset($validated['keterangan'])) $changes['keterangan_segel_keluar'] = $validated['keterangan'] ?? 'Kosong';
+
+            ActivityLogger::vcfUpdated($vcf, $changes);
 
             return response()->json([
                 'message' => 'VCF Bagian 3 berhasil diperbarui.',
