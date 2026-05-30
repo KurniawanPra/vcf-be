@@ -18,6 +18,7 @@ class DashboardController extends Controller
                 'total'         => Vcf::count(),
                 'today'         => Vcf::whereDate('tanggal', $today)->count(),
                 'active'        => Vcf::whereNotIn('status', ['selesai', 'reject'])->count(),
+                'completed'     => Vcf::where('status', 'selesai')->count(),
                 'system_speed'  => $this->getSystemSpeed(),
             ];
 
