@@ -240,7 +240,9 @@ class VcfBagian1Controller extends Controller
                 ], 422);
             }
 
-            $existingRecord = Vcf::where('no_polisi', $validated['no_polisi'])
+            $validated['no_polisi'] = strtoupper(trim($validated['no_polisi']));
+
+            $existingRecord = Vcf::whereRaw('UPPER(TRIM(no_polisi)) = ?', [$validated['no_polisi']])
                                 ->whereNotIn('status', ['selesai', 'reject'])
                                 ->first();
 
@@ -465,6 +467,10 @@ class VcfBagian1Controller extends Controller
 
         DB::beginTransaction();
         try {
+            if (isset($validated['no_polisi'])) {
+                $validated['no_polisi'] = strtoupper(trim($validated['no_polisi']));
+            }
+
             // Only update keys that were actually sent in the request (use array_intersect_key).
             // Do NOT use array_filter with null check: it would drop intentional null values (e.g., asal_tujuan).
             $fillable = array_intersect_key($validated, array_flip([
