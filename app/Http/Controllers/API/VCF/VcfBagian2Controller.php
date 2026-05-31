@@ -57,24 +57,9 @@ class VcfBagian2Controller extends Controller
             'beban_tambahan_ada' => 'required|boolean',
             'jenis_beban' => 'required_if:beban_tambahan_ada,true|nullable|string|max:255',
 
-            // Segel
-            'segel_terpasang' => 'required|boolean',
-            'jumlah_segel' => 'required_if:segel_terpasang,true|nullable|integer|min:1|max:100',
-            'nomor_segel' => 'required_if:segel_terpasang,true|nullable|array',
-            'nomor_segel.*' => 'required|string|max:100',
-
             // Keterangan umum (opsional)
             'keterangan' => 'nullable|string|max:1000',
         ]);
-
-        // Pastikan jumlah elemen nomor_segel sesuai jumlah_segel
-        if ($validated['segel_terpasang'] && !empty($validated['nomor_segel'])) {
-            if (count($validated['nomor_segel']) !== (int) $validated['jumlah_segel']) {
-                return response()->json([
-                    'message' => 'Jumlah nomor segel harus sama dengan jumlah segel yang diinput.',
-                ], 422);
-            }
-        }
 
         DB::beginTransaction();
         try {
@@ -99,31 +84,15 @@ class VcfBagian2Controller extends Controller
                 ]);
             }
 
-            // Hapus segel lama jika ada (misal dari Bagian 1)
-            $vcf->segelMasuk()->each(fn($s) => $s->nomorSegel()->delete());
-            $vcf->segelMasuk()->delete();
-
-            // Simpan segel (selalu buat record untuk menyimpan keterangan umum)
-            if ($validated['segel_terpasang']) {
-                $segel = VcfSegelMasuk::create([
-                    'vcf_id' => $vcf->id,
-                    'jumlah_segel' => $validated['jumlah_segel'],
-                    'petugas_id' => $request->user()->id,
+            // Update or create segel_masuk for saving the keterangan from Weighbridge Masuk,
+            // but DO NOT touch the jumlah_segel or nomor_segel (unless creating for the first time).
+            $segelMasuk = VcfSegelMasuk::where('vcf_id', $vcf->id)->first();
+            if ($segelMasuk) {
+                $segelMasuk->update([
                     'keterangan' => $validated['keterangan'] ?? null,
                 ]);
-
-                if (!empty($validated['nomor_segel'])) {
-                    foreach ($validated['nomor_segel'] as $urutan => $nomor) {
-                        VcfNomorSegelMasuk::create([
-                            'segel_masuk_id' => $segel->id,
-                            'urutan' => $urutan + 1,
-                            'nomor_segel' => $nomor,
-                        ]);
-                    }
-                }
             } else {
-                // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
-                $segel = VcfSegelMasuk::create([
+                VcfSegelMasuk::create([
                     'vcf_id' => $vcf->id,
                     'jumlah_segel' => 0,
                     'petugas_id' => $request->user()->id,
@@ -225,11 +194,6 @@ class VcfBagian2Controller extends Controller
             'beban_tambahan_ada' => 'sometimes|boolean',
             'jenis_beban' => 'nullable|string|max:255',
 
-            'segel_terpasang' => 'sometimes|boolean',
-            'jumlah_segel' => 'nullable|integer|min:1|max:100',
-            'nomor_segel' => 'nullable|array',
-            'nomor_segel.*' => 'required|string|max:100',
-
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
@@ -259,36 +223,14 @@ class VcfBagian2Controller extends Controller
                 }
             }
 
-            if (isset($validated['segel_terpasang'])) {
-                // Hapus segel lama beserta nomor-nomornya (cascade)
-                $vcf->segelMasuk()->each(fn($s) => $s->nomorSegel()->delete());
-                $vcf->segelMasuk()->delete();
-
-                if ($validated['segel_terpasang']) {
-                    if (count($validated['nomor_segel'] ?? []) !== (int) $validated['jumlah_segel']) {
-                        DB::rollBack();
-                        return response()->json([
-                            'message' => 'Jumlah nomor segel tidak sesuai.',
-                        ], 422);
-                    }
-
-                    $segel = VcfSegelMasuk::create([
-                        'vcf_id' => $vcf->id,
-                        'jumlah_segel' => $validated['jumlah_segel'],
-                        'petugas_id' => $request->user()->id,
+            if (array_key_exists('keterangan', $validated)) {
+                $segelMasuk = VcfSegelMasuk::where('vcf_id', $vcf->id)->first();
+                if ($segelMasuk) {
+                    $segelMasuk->update([
                         'keterangan' => $validated['keterangan'] ?? null,
                     ]);
-
-                    foreach ($validated['nomor_segel'] as $urutan => $nomor) {
-                        VcfNomorSegelMasuk::create([
-                            'segel_masuk_id' => $segel->id,
-                            'urutan' => $urutan + 1,
-                            'nomor_segel' => $nomor,
-                        ]);
-                    }
                 } else {
-                    // Jika segel tidak terpasang, tetap buat record untuk menyimpan keterangan umum
-                    $segel = VcfSegelMasuk::create([
+                    VcfSegelMasuk::create([
                         'vcf_id' => $vcf->id,
                         'jumlah_segel' => 0,
                         'petugas_id' => $request->user()->id,
@@ -302,7 +244,6 @@ class VcfBagian2Controller extends Controller
             $changes = [];
             if (isset($validated['pemeriksaan'])) $changes['pemeriksaan_masuk'] = 'Pemeriksaan checklist diperbarui';
             if (isset($validated['beban_tambahan_ada'])) $changes['beban_tambahan_masuk'] = $validated['beban_tambahan_ada'] ? 'Ada (' . ($validated['jenis_beban'] ?? '') . ')' : 'Tidak ada';
-            if (isset($validated['segel_terpasang'])) $changes['segel_masuk'] = $validated['segel_terpasang'] ? 'Terpasang (' . ($validated['jumlah_segel'] ?? 0) . ' segel)' : 'Tidak terpasang';
             if (isset($validated['keterangan'])) $changes['keterangan_segel_masuk'] = $validated['keterangan'] ?? 'Kosong';
 
             ActivityLogger::vcfUpdated($vcf, $changes);

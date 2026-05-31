@@ -472,12 +472,11 @@ class VcfBagian1Controller extends Controller
             }
 
             // Only update keys that were actually sent in the request (use array_intersect_key).
-            // Do NOT use array_filter with null check: it would drop intentional null values (e.g., asal_tujuan).
             $fillable = array_intersect_key($validated, array_flip([
                 'nomor_urut', 'tanggal', 'produk', 'tipe_kegiatan',
                 'asal_tujuan', 'jenis_kendaraan_id', 'no_polisi', 'transporter_id',
                 'driver_id', 'jam_masuk', 'tipe_kendaraan', 'tahun_kendaraan',
-                'muatan_dibawa', 'muatan_diisi', 'keterangan'
+                'keterangan'
             ]));
             if (!empty($fillable)) {
                 $vcf->update($fillable);
@@ -531,6 +530,21 @@ class VcfBagian1Controller extends Controller
                 } else {
                     $timbanganData['vcf_id'] = $vcf->id;
                     \App\Models\Timbangan::create($timbanganData);
+                }
+            }
+
+            // Clean up invalid seals if activity type changes
+            $oldTipeKegiatan = $vcf->getOriginal('tipe_kegiatan');
+            $newTipeKegiatan = $validated['tipe_kegiatan'] ?? $vcf->tipe_kegiatan;
+            if ($oldTipeKegiatan && $newTipeKegiatan && $oldTipeKegiatan !== $newTipeKegiatan) {
+                if (str_starts_with($newTipeKegiatan, 'loading')) {
+                    // Delete segel masuk (since it's now loading)
+                    $vcf->segelMasuk()->each(fn($s) => $s->nomorSegel()->delete());
+                    $vcf->segelMasuk()->delete();
+                } else if (str_starts_with($newTipeKegiatan, 'unloading')) {
+                    // Delete segel keluar (since it's now unloading)
+                    $vcf->segelKeluar()->each(fn($s) => $s->nomorSegel()->delete());
+                    $vcf->segelKeluar()->delete();
                 }
             }
 
