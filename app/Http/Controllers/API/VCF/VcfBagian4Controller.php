@@ -32,6 +32,15 @@ class VcfBagian4Controller extends Controller
             ], 422);
         }
 
+        if (str_starts_with($vcf->tipe_kegiatan, 'loading')) {
+            $segel = $vcf->segelKeluar;
+            if (!$segel || $segel->jumlah_segel === 0 || $segel->nomorSegel()->count() === 0) {
+                return response()->json([
+                    'message' => 'Segel keluar wajib diisi untuk kegiatan loading sebelum menyelesaikan Bagian 4.',
+                ], 422);
+            }
+        }
+
         $validated = $request->validate([
             'jam_keluar'               => 'required|date_format:H:i',
             'emergency_respon_kontak'  => 'nullable|string|max:500',
@@ -87,6 +96,15 @@ class VcfBagian4Controller extends Controller
             return response()->json([
                 'message' => 'VCF belum menyelesaikan timbangan keluar.',
             ], 422);
+        }
+
+        if (str_starts_with($vcf->tipe_kegiatan, 'loading')) {
+            $segel = $vcf->segelKeluar;
+            if (!$segel || $segel->jumlah_segel === 0 || $segel->nomorSegel()->count() === 0) {
+                return response()->json([
+                    'message' => 'Segel keluar wajib diisi untuk kegiatan loading sebelum konfirmasi keluar Main Gate.',
+                ], 422);
+            }
         }
 
         $vcf->update(['status' => 'selesai']);
