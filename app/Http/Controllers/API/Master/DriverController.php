@@ -17,9 +17,10 @@ class DriverController extends Controller
             $query = Driver::query();
 
             if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('nama_supir', 'like', '%' . $request->search . '%')
-                      ->orWhere('no_sim', 'like', '%' . $request->search . '%');
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($request, $like) {
+                    $q->where('nama_supir', $like, '%' . $request->search . '%')
+                      ->orWhere('no_sim', $like, '%' . $request->search . '%');
                 });
             }
 

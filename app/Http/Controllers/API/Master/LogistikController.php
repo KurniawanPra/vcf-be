@@ -19,10 +19,11 @@ class LogistikController extends Controller
             $query = Logistik::query();
 
             if ($request->has('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('nama', 'like', '%' . $request->search . '%')
-                      ->orWhere('nama_logistik', 'like', '%' . $request->search . '%')
-                      ->orWhere('kode', 'like', '%' . $request->search . '%');
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($request, $like) {
+                    $q->where('nama', $like, '%' . $request->search . '%')
+                      ->orWhere('nama_logistik', $like, '%' . $request->search . '%')
+                      ->orWhere('kode', $like, '%' . $request->search . '%');
                 });
             }
 

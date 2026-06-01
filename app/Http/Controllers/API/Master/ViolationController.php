@@ -79,11 +79,12 @@ class ViolationController extends Controller
             }
             if ($request->filled('search')) {
                 $q2 = $request->search;
-                $query->where(function ($q) use ($q2) {
-                    $q->where('jenis_pelanggaran', 'like', '%' . $q2 . '%')
-                      ->orWhere('keterangan', 'like', '%' . $q2 . '%')
-                      ->orWhere('no_polisi', 'like', '%' . $q2 . '%')
-                      ->orWhereHas('driver', fn($d) => $d->where('nama_supir', 'like', '%' . $q2 . '%'));
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($q2, $like) {
+                    $q->where('jenis_pelanggaran', $like, '%' . $q2 . '%')
+                      ->orWhere('keterangan', $like, '%' . $q2 . '%')
+                      ->orWhere('no_polisi', $like, '%' . $q2 . '%')
+                      ->orWhereHas('driver', fn($d) => $d->where('nama_supir', $like, '%' . $q2 . '%'));
                 });
             }
             if ($request->filled('date_from')) {

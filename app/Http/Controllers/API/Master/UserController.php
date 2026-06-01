@@ -20,9 +20,10 @@ class UserController extends Controller
             $query = User::query();
 
             if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('nama', 'like', '%' . $request->search . '%')
-                      ->orWhere('username', 'like', '%' . $request->search . '%');
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($request, $like) {
+                    $q->where('nama', $like, '%' . $request->search . '%')
+                      ->orWhere('username', $like, '%' . $request->search . '%');
                 });
             }
 

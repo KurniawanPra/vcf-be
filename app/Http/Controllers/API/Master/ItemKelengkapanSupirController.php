@@ -30,9 +30,10 @@ class ItemKelengkapanSupirController extends Controller
             $query = ItemKelengkapanSupir::query();
 
             if ($request->has('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('nama_item', 'like', '%' . $request->search . '%')
-                      ->orWhere('keterangan', 'like', '%' . $request->search . '%');
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($request, $like) {
+                    $q->where('nama_item', $like, '%' . $request->search . '%')
+                      ->orWhere('keterangan', $like, '%' . $request->search . '%');
                 });
             }
 

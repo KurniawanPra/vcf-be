@@ -19,9 +19,10 @@ class TransporterController extends Controller
             $query = Transporter::query();
 
             if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('nama_transporter', 'like', '%' . $request->search . '%')
-                      ->orWhere('kode', 'like', '%' . $request->search . '%');
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($request, $like) {
+                    $q->where('nama_transporter', $like, '%' . $request->search . '%')
+                      ->orWhere('kode', $like, '%' . $request->search . '%');
                 });
             }
 

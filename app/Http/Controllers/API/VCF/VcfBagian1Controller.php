@@ -66,18 +66,19 @@ class VcfBagian1Controller extends Controller
         ]);
 
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('nomor_urut', 'like', '%' . $request->search . '%')
-                    ->orWhere('no_polisi', 'like', '%' . $request->search . '%')
-                    ->orWhere('produk', 'like', '%' . $request->search . '%')
-                    ->orWhere('tipe_kegiatan', 'like', '%' . $request->search . '%')
-                    ->orWhere('status', 'like', '%' . $request->search . '%')
-                    ->orWhereHas('driver', function ($q) use ($request) {
-                        $q->where('nama_supir', 'like', '%' . $request->search . '%')
-                            ->orWhere('no_sim', 'like', '%' . $request->search . '%');
+            $like = $this->likeOperator();
+            $query->where(function ($q) use ($request, $like) {
+                $q->where('nomor_urut', $like, '%' . $request->search . '%')
+                    ->orWhere('no_polisi', $like, '%' . $request->search . '%')
+                    ->orWhere('produk', $like, '%' . $request->search . '%')
+                    ->orWhere('tipe_kegiatan', $like, '%' . $request->search . '%')
+                    ->orWhere('status', $like, '%' . $request->search . '%')
+                    ->orWhereHas('driver', function ($q) use ($request, $like) {
+                        $q->where('nama_supir', $like, '%' . $request->search . '%')
+                            ->orWhere('no_sim', $like, '%' . $request->search . '%');
                     })
-                    ->orWhereHas('transporter', function ($q) use ($request) {
-                        $q->where('nama_transporter', 'like', '%' . $request->search . '%');
+                    ->orWhereHas('transporter', function ($q) use ($request, $like) {
+                        $q->where('nama_transporter', $like, '%' . $request->search . '%');
                     });
             });
         }
