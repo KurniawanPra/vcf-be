@@ -61,7 +61,7 @@ class ActivityLogController extends Controller
             $query->where('created_at', '>=', now()->subDays(7));
         }
 
-        $perPage = min((int) $request->get('per_page', 50), 200);
+        $perPage = min((int) $request->get('per_page', 50), 2000);
         $data = $query->paginate($perPage);
 
         return response()->json($data);

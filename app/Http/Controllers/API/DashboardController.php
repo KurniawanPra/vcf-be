@@ -14,32 +14,48 @@ class DashboardController extends Controller
     {
         try {
             $stats = Cache::remember('dashboard_stats', 2, function () {
-                $today = now()->toDateString();
-                $currentYear = now()->year;
-                $currentMonth = now()->month;
+                $todayLocal = now()->timezone('Asia/Jakarta')->toDateString();
+                $currentYearLocal = now()->timezone('Asia/Jakarta')->year;
+                $currentMonthLocal = now()->timezone('Asia/Jakarta')->month;
 
+                // Count overall totals directly from the vcfs table
                 $dbStats = DB::selectOne("
                     SELECT
                         COUNT(*) as total_overall,
-                        SUM(CASE WHEN tanggal = ? THEN 1 ELSE 0 END) as total_today,
-                        SUM(CASE WHEN YEAR(tanggal) = ? AND MONTH(tanggal) = ? THEN 1 ELSE 0 END) as total_month,
-                        
                         SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as completed_overall,
-                        SUM(CASE WHEN status = 'selesai' AND tanggal = ? THEN 1 ELSE 0 END) as completed_today,
-                        SUM(CASE WHEN status = 'selesai' AND YEAR(tanggal) = ? AND MONTH(tanggal) = ? THEN 1 ELSE 0 END) as completed_month,
-                        
                         SUM(CASE WHEN status = 'reject' THEN 1 ELSE 0 END) as reject_overall,
-                        SUM(CASE WHEN status = 'reject' AND tanggal = ? THEN 1 ELSE 0 END) as reject_today,
-                        SUM(CASE WHEN status = 'reject' AND YEAR(tanggal) = ? AND MONTH(tanggal) = ? THEN 1 ELSE 0 END) as reject_month,
-                        
                         SUM(CASE WHEN status NOT IN ('selesai', 'reject') THEN 1 ELSE 0 END) as active_in_area,
                         SUM(CASE WHEN status IN ('bagian1_selesai', 'bagian2_selesai', 'bagian3_selesai', 'weighbridge_keluar') THEN 1 ELSE 0 END) as pending
                     FROM vcfs
-                ", [
-                    $today, $currentYear, $currentMonth,
-                    $today, $currentYear, $currentMonth,
-                    $today, $currentYear, $currentMonth
-                ]);
+                ");
+
+                // Count daily events directly from vcfs table for exact sync with the chart
+                $totalToday = DB::table('vcfs')
+                    ->where('tanggal', $todayLocal)
+                    ->count();
+
+                $completedToday = DB::table('vcfs')
+                    ->where('tanggal', $todayLocal)
+                    ->where('status', 'selesai')
+                    ->count();
+
+                $rejectToday = DB::table('vcfs')
+                    ->where('tanggal', $todayLocal)
+                    ->where('status', 'reject')
+                    ->count();
+
+                // Count monthly events directly from vcfs table
+                $totalMonth = DB::table('vcfs')
+                    ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ?", [$currentYearLocal, $currentMonthLocal])
+                    ->count();
+
+                $completedMonth = DB::table('vcfs')
+                    ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ? AND status = 'selesai'", [$currentYearLocal, $currentMonthLocal])
+                    ->count();
+
+                $rejectMonth = DB::table('vcfs')
+                    ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ? AND status = 'reject'", [$currentYearLocal, $currentMonthLocal])
+                    ->count();
 
                 // Daily counts for the last 7 days (including today)
                 $dailyCounts = DB::select("
@@ -106,16 +122,16 @@ class DashboardController extends Controller
 
                 return [
                     'total_overall'      => (int) ($dbStats->total_overall ?? 0),
-                    'total_today'        => (int) ($dbStats->total_today ?? 0),
-                    'total_month'        => (int) ($dbStats->total_month ?? 0),
+                    'total_today'        => $totalToday,
+                    'total_month'        => $totalMonth,
                     
                     'completed_overall'  => (int) ($dbStats->completed_overall ?? 0),
-                    'completed_today'    => (int) ($dbStats->completed_today ?? 0),
-                    'completed_month'    => (int) ($dbStats->completed_month ?? 0),
+                    'completed_today'    => $completedToday,
+                    'completed_month'    => $completedMonth,
                     
                     'reject_overall'     => (int) ($dbStats->reject_overall ?? 0),
-                    'reject_today'      => (int) ($dbStats->reject_today ?? 0),
-                    'reject_month'       => (int) ($dbStats->reject_month ?? 0),
+                    'reject_today'       => $rejectToday,
+                    'reject_month'       => $rejectMonth,
                     
                     'active_in_area'     => (int) ($dbStats->active_in_area ?? 0),
                     'pending'            => (int) ($dbStats->pending ?? 0),
@@ -131,6 +147,34 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to fetch dashboard stats',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getMonthlyChartData(Request $request)
+    {
+        try {
+            $year = (int) $request->get('year', now()->timezone('Asia/Jakarta')->year);
+            $month = (int) $request->get('month', now()->timezone('Asia/Jakarta')->month);
+
+            $data = DB::table('vcfs')
+                ->selectRaw("
+                    tanggal as date,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN status = 'reject' THEN 1 ELSE 0 END) as rejected,
+                    SUM(CASE WHEN status NOT IN ('selesai', 'reject') THEN 1 ELSE 0 END) as pending
+                ")
+                ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ?", [$year, $month])
+                ->groupBy('tanggal')
+                ->orderBy('date', 'asc')
+                ->get();
+
+            return response()->json($data);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch monthly chart data',
                 'error'   => $e->getMessage()
             ], 500);
         }

@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
     Route::get('dashboard/stats', [DashboardController::class, 'getStats']);
+    Route::get('dashboard/monthly-chart', [DashboardController::class, 'getMonthlyChartData']);
 
     /*
     Master Data Routes
