@@ -173,7 +173,7 @@ class VcfBagian1Controller extends Controller
             ],
             'no_polisi' => 'required|string|max:20',
             'tipe_kendaraan' => 'required|in:bak_terbuka,tangki,umum,box,container',
-            'tahun_kendaraan' => 'required|integer|min:1950|max:' . (int) date('Y'),
+            'tahun_kendaraan' => 'required|integer|min:1950|max:2100',
             'transporter_id' => [
                 'required',
                 Rule::exists('transporters', 'id')->where('is_active', true),
@@ -271,7 +271,7 @@ class VcfBagian1Controller extends Controller
             'netto_from' => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
-            'tahun_kendaraan.max' => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',
+            'tahun_kendaraan.max' => 'Tahun kendaraan tidak boleh lebih dari 2100.',
             'segel_terpasang.required_if' => 'Status segel terpasang wajib diisi untuk unloading.',
             'segel_terpasang.accepted' => 'Segel wajib terpasang (disetujui/aktif) untuk unloading.',
             'jumlah_segel.required_if' => 'Jumlah segel wajib diisi untuk unloading.',
@@ -473,7 +473,7 @@ class VcfBagian1Controller extends Controller
             ],
             'no_polisi' => 'sometimes|required|string|max:20',
             'tipe_kendaraan' => 'nullable|in:bak_terbuka,tangki,umum,box,container',
-            'tahun_kendaraan' => 'nullable|integer|min:1950|max:' . (int) date('Y'),
+            'tahun_kendaraan' => 'nullable|integer|min:1950|max:2100',
             'transporter_id' => [
                 'sometimes',
                 'required',
@@ -568,7 +568,7 @@ class VcfBagian1Controller extends Controller
             'netto_from' => 'nullable|numeric|min:0',
         ], [
             'tahun_kendaraan.integer' => 'Tahun kendaraan harus berupa angka.',
-            'tahun_kendaraan.max' => 'Tahun kendaraan tidak boleh lebih dari ' . date('Y') . '.',
+            'tahun_kendaraan.max' => 'Tahun kendaraan tidak boleh lebih dari 2100.',
         ]);
 
         DB::beginTransaction();
