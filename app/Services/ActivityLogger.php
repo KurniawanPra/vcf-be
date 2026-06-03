@@ -116,16 +116,18 @@ class ActivityLogger
         }
 
         // Buat kalimat deskripsi yang lebih jelas
-        $desc = "VCF diperbarui: {$label}";
-        if (!empty($details)) {
-            $changedKeys = array_keys($details);
-            $desc .= " (Kolom diubah: " . implode(', ', $changedKeys) . ")";
+        if (empty($details)) {
+            return;
         }
+
+        $desc = "VCF diperbarui: {$label}";
+        $changedKeys = array_keys($details);
+        $desc .= " (Kolom diubah: " . implode(', ', $changedKeys) . ")";
 
         self::log(
             'vcf.updated', 'vcf', 'updated', $vcf,
             $desc,
-            $details ? ['changes' => $details] : [],
+            ['changes' => $details],
             $label
         );
     }
@@ -166,33 +168,97 @@ class ActivityLogger
 
     public static function masterCreated(string $modelName, $model, string $label): void
     {
+        $details = [];
+        if ($model) {
+            $attributes = $model->getAttributes();
+            foreach ($attributes as $key => $val) {
+                if (in_array($key, ['password', 'remember_token', 'created_at', 'updated_at'])) {
+                    continue;
+                }
+                $details[$key] = $val !== null ? (string)$val : 'kosong';
+            }
+        }
         self::log(
             "master.{$modelName}.created", 'master', 'created', $model,
             "Master data {$modelName} ditambahkan: {$label}",
-            [], $label
+            $details ? ['data' => $details] : [],
+            $label
         );
     }
 
     public static function masterUpdated(string $modelName, $model, string $label): void
     {
-        $changed = [];
+        $details = [];
         if ($model && method_exists($model, 'getChanges')) {
             $changed = $model->getChanges();
+            foreach ($changed as $key => $newVal) {
+                if (in_array($key, ['remember_token', 'updated_at'])) {
+                    continue;
+                }
+                if ($key === 'password') {
+                    $details[$key] = [
+                        'old' => '*******',
+                        'new' => '*******'
+                    ];
+                    continue;
+                }
+                $oldVal = $model->getOriginal($key);
+                if ($oldVal != $newVal) {
+                    $details[$key] = [
+                        'old' => $oldVal !== null ? (string)$oldVal : 'kosong',
+                        'new' => $newVal !== null ? (string)$newVal : 'kosong'
+                    ];
+                }
+            }
         }
+
+        $desc = "Master data {$modelName} diperbarui: {$label}";
+        if (!empty($details)) {
+            $changedKeys = array_keys($details);
+            $desc .= " (Kolom diubah: " . implode(', ', $changedKeys) . ")";
+        }
+
         self::log(
             "master.{$modelName}.updated", 'master', 'updated', $model,
-            "Master data {$modelName} diperbarui: {$label}",
-            $changed ? ['changed_fields' => array_keys($changed)] : [],
+            $desc,
+            $details ? ['changes' => $details] : [],
             $label
         );
     }
 
-    public static function masterDeleted(string $modelName, string $label): void
+    public static function masterDeleted(string $modelName, $model, string $label): void
     {
+        $details = [];
+        if ($model) {
+            $attributes = $model->getAttributes();
+            foreach ($attributes as $key => $val) {
+                if (in_array($key, ['password', 'remember_token'])) {
+                    continue;
+                }
+                $details[$key] = $val !== null ? (string)$val : 'kosong';
+            }
+        }
         self::log(
             "master.{$modelName}.deleted", 'master', 'deleted', null,
             "Master data {$modelName} dihapus: {$label}",
-            [], $label
+            $details ? ['deleted_data' => $details] : [],
+            $label
+        );
+    }
+
+    public static function vcfUpdatedDirect($vcf, array $details): void
+    {
+        $label = "VCF #{$vcf->nomor_urut} ({$vcf->no_polisi})";
+        
+        $desc = "VCF diperbarui: {$label}";
+        $changedKeys = array_keys($details);
+        $desc .= " (Kolom diubah: " . implode(', ', $changedKeys) . ")";
+
+        self::log(
+            'vcf.updated', 'vcf', 'updated', $vcf,
+            $desc,
+            ['changes' => $details],
+            $label
         );
     }
 
