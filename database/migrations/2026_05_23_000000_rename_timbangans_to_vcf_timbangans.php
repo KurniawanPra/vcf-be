@@ -13,7 +13,9 @@ class RenameTimbangansToVcfTimbangans extends Migration
      */
     public function up()
     {
-        Schema::rename('timbangans', 'vcf_timbangans');
+        if (Schema::hasTable('timbangans') && !Schema::hasTable('vcf_timbangans')) {
+            Schema::rename('timbangans', 'vcf_timbangans');
+        }
     }
 
     /**
@@ -23,6 +25,8 @@ class RenameTimbangansToVcfTimbangans extends Migration
      */
     public function down()
     {
-        Schema::rename('vcf_timbangans', 'timbangans');
+        if (Schema::hasTable('vcf_timbangans') && !Schema::hasTable('timbangans')) {
+            Schema::rename('vcf_timbangans', 'timbangans');
+        }
     }
 }

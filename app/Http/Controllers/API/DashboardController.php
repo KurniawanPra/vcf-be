@@ -44,38 +44,66 @@ class DashboardController extends Controller
                     ->where('status', 'reject')
                     ->count();
 
-                // Count monthly events directly from vcfs table
+                // Count monthly events directly from vcfs table using database-agnostic whereBetween
+                $startOfMonth = now()->timezone('Asia/Jakarta')->startOfMonth()->toDateString();
+                $endOfMonth = now()->timezone('Asia/Jakarta')->endOfMonth()->toDateString();
+
                 $totalMonth = DB::table('vcfs')
-                    ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ?", [$currentYearLocal, $currentMonthLocal])
+                    ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
                     ->count();
 
                 $completedMonth = DB::table('vcfs')
-                    ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ? AND status = 'selesai'", [$currentYearLocal, $currentMonthLocal])
+                    ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                    ->where('status', 'selesai')
                     ->count();
 
                 $rejectMonth = DB::table('vcfs')
-                    ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ? AND status = 'reject'", [$currentYearLocal, $currentMonthLocal])
+                    ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                    ->where('status', 'reject')
                     ->count();
 
-                // Daily counts for the last 7 days (including today)
-                $dailyCounts = DB::select("
-                    SELECT tanggal as date, COUNT(*) as count
-                    FROM vcfs
-                    WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-                    GROUP BY tanggal
-                    ORDER BY tanggal ASC
-                ");
+                // Daily counts for the last 7 days (including today) - database driver aware
+                $dbDriver = DB::getDriverName();
+                if ($dbDriver === 'pgsql') {
+                    $dailyCounts = DB::select("
+                        SELECT tanggal as date, COUNT(*) as count
+                        FROM vcfs
+                        WHERE tanggal >= CURRENT_DATE - INTERVAL '6 days'
+                        GROUP BY tanggal
+                        ORDER BY tanggal ASC
+                    ");
+                } else {
+                    $dailyCounts = DB::select("
+                        SELECT tanggal as date, COUNT(*) as count
+                        FROM vcfs
+                        WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                        GROUP BY tanggal
+                        ORDER BY tanggal ASC
+                    ");
+                }
 
                 // Establish baseline: Average daily VCF count over the last 30 days
-                $avgDb = DB::selectOne("
-                    SELECT AVG(daily_count) as avg_count
-                    FROM (
-                        SELECT tanggal, COUNT(*) as daily_count
-                        FROM vcfs
-                        WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
-                        GROUP BY tanggal
-                    ) as daily_totals
-                ");
+                if ($dbDriver === 'pgsql') {
+                    $avgDb = DB::selectOne("
+                        SELECT AVG(daily_count) as avg_count
+                        FROM (
+                            SELECT tanggal, COUNT(*) as daily_count
+                            FROM vcfs
+                            WHERE tanggal >= CURRENT_DATE - INTERVAL '29 days'
+                            GROUP BY tanggal
+                        ) as daily_totals
+                    ");
+                } else {
+                    $avgDb = DB::selectOne("
+                        SELECT AVG(daily_count) as avg_count
+                        FROM (
+                            SELECT tanggal, COUNT(*) as daily_count
+                            FROM vcfs
+                            WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+                            GROUP BY tanggal
+                        ) as daily_totals
+                    ");
+                }
                 
                 $avgCount = (float) ($avgDb->avg_count ?? 10);
                 if ($avgCount < 5) {
@@ -158,6 +186,9 @@ class DashboardController extends Controller
             $year = (int) $request->get('year', now()->timezone('Asia/Jakarta')->year);
             $month = (int) $request->get('month', now()->timezone('Asia/Jakarta')->month);
 
+            $startOfMonth = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth()->toDateString();
+            $endOfMonth = \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+
             $data = DB::table('vcfs')
                 ->selectRaw("
                     tanggal as date,
@@ -166,7 +197,7 @@ class DashboardController extends Controller
                     SUM(CASE WHEN status = 'reject' THEN 1 ELSE 0 END) as rejected,
                     SUM(CASE WHEN status NOT IN ('selesai', 'reject') THEN 1 ELSE 0 END) as pending
                 ")
-                ->whereRaw("YEAR(tanggal) = ? AND MONTH(tanggal) = ?", [$year, $month])
+                ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
                 ->groupBy('tanggal')
                 ->orderBy('date', 'asc')
                 ->get();
