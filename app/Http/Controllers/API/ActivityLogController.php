@@ -71,8 +71,9 @@ class ActivityLogController extends Controller
     /**
      * Detail satu log entry.
      */
-    public function show(int $id)
+    public function show($id)
     {
+        $id = (int) $id;
         $log = ActivityLog::findOrFail($id);
         return response()->json($log);
     }

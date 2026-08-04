@@ -26,8 +26,9 @@ class VcfBagian3Controller extends Controller
      * Simpan Bagian 3 — Pemeriksaan Weighbridge Keluar.
      * VCF harus berstatus 'bagian2_selesai'.
      */
-    public function store(Request $request, int $vcfId)
+    public function store(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         if ($vcf->driver && $vcf->driver->status === 'blacklist') {
@@ -149,8 +150,9 @@ class VcfBagian3Controller extends Controller
     /**
      * Reject VCF at Bagian 3.
      */
-    public function reject(Request $request, int $vcfId)
+    public function reject(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         if (!in_array($vcf->status, ['bagian2_selesai', 'loading_unloading_selesai'])) {
@@ -183,8 +185,9 @@ class VcfBagian3Controller extends Controller
     /**
      * Update Bagian 3 — hanya jika status 'bagian3_selesai' atau user adalah admin.
      */
-    public function update(Request $request, int $vcfId)
+    public function update(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         if ($vcf->driver && $vcf->driver->status === 'blacklist') {
@@ -320,14 +323,16 @@ class VcfBagian3Controller extends Controller
         }
     }
 
-    public function show(int $vcfId)
+    public function show($vcfId)
     {
+        $vcfId = (int) $vcfId;
         Vcf::findOrFail($vcfId);
         return response()->json($this->loadBagian3($vcfId));
     }
 
-    private function loadBagian3(int $vcfId): array
+    private function loadBagian3($vcfId): array
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::with([
             'pemeriksaanKeluar.item',
             'pemeriksaanKeluar.petugas:id,nama',

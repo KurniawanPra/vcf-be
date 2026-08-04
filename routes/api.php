@@ -78,6 +78,14 @@ Route::middleware('auth:sanctum')->group(function () {
             'users'                  => [UserController::class, 'user'], // Alias
         ];
 
+        // PENTING: rute statis harus didaftarkan SEBELUM loop resource di bawah,
+        // karena loop membuat rute "{uri}/{param}" yang akan menangkap "driver/stats"
+        // dan gagal saat route-model binding.
+        Route::middleware('petugas')->group(function () {
+            Route::get('driver/stats', [DriverController::class, 'stats']);
+            Route::get('drivers/stats', [DriverController::class, 'stats']); // Alias
+        });
+
         foreach ($masterResources as $uri => $config) {
             $controller = $config[0];
             $param = $config[1];
@@ -127,6 +135,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('petugas')->group(function () {
             // Bagian 1 (Main Gate Masuk)
             Route::get('next-number', [VcfBagian1Controller::class, 'getNextNumber']);
+            // Rute agregat — didaftarkan sebelum "vcf/{id}" agar tidak tertangkap wildcard.
+            Route::get('monthly-stats', [VcfBagian1Controller::class, 'monthlyStats']);
+            Route::get('operational-stats', [VcfBagian1Controller::class, 'operationalStats']);
             Route::get('/', [VcfBagian1Controller::class, 'index']);
             Route::post('/', [VcfBagian1Controller::class, 'store']);
             Route::get('{id}', [VcfBagian1Controller::class, 'show']);

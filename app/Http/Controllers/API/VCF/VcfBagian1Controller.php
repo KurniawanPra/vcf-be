@@ -21,29 +21,29 @@ class VcfBagian1Controller extends Controller
     /**
      * Ambil nomor urut berikutnya.
      */
-    public function getNextNumber()
+    public function getNextNumber(Request $request)
     {
-        // Nomor urut reset bulanan.
-        $dateStr = request('tanggal', date('Y-m-d'));
-        $date = \Carbon\Carbon::parse($dateStr);
+        // Nomor urut reset bulanan (berdasarkan bulan dan tahun tanggal VCF).
+        $dateInput = $request->filled('tanggal') ? $request->get('tanggal') : date('Y-m-d');
+        try {
+            $date = \Carbon\Carbon::parse($dateInput);
+        } catch (\Exception $e) {
+            $date = \Carbon\Carbon::now();
+        }
 
-        // Use database-agnostic ordering
+        $startOfMonth = $date->copy()->startOfMonth()->toDateString();
+        $endOfMonth = $date->copy()->endOfMonth()->toDateString();
+
         /** @var \Illuminate\Database\Connection $connection */
         $connection = DB::connection();
         $castType = $connection->getDriverName() === 'pgsql' ? 'INTEGER' : 'UNSIGNED';
 
-        $lastVcf = Vcf::whereYear('tanggal', $date->year)
-            ->whereMonth('tanggal', $date->month)
-            ->orderByRaw("CAST(nomor_urut AS {$castType}) DESC")
-            ->first();
+        $maxNum = Vcf::whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->max(DB::raw("CAST(nomor_urut AS {$castType})"));
 
-        $nextNumber = 1;
-        if ($lastVcf) {
-            $lastNumber = (int) $lastVcf->nomor_urut;
-            $nextNumber = $lastNumber + 1;
-        }
-
+        $nextNumber = (int) $maxNum + 1;
         $next = str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
         return response()->json(['next_number' => $next]);
     }
 
@@ -52,10 +52,17 @@ class VcfBagian1Controller extends Controller
      */
     public function index(Request $request)
     {
-        $query = Vcf::with([
-            'jenisKendaraan',
-            'transporter',
-            'driver',
+        // Relasi "ringan" untuk listing tabel (Arsip / Daftar / Operasional).
+        // Relasi berat (segel + nomor segel, beban tambahan, timbangan) hanya
+        // dimuat bila klien memintanya lewat ?with_detail=1 — dipakai oleh
+        // export Excel / print yang memang butuh kolom keterangan & segel.
+        $lightRelations = [
+            'transporter:id,nama_transporter',
+            'driver:id,nama_supir,no_sim,status',
+        ];
+
+        $detailRelations = [
+            'jenisKendaraan:id,nama,kode',
             'timbangan',
             'createdBy:id,nama',
             'vcfKeluar',
@@ -63,7 +70,31 @@ class VcfBagian1Controller extends Controller
             'segelKeluar.nomorSegel',
             'bebanTambahanMasuk',
             'bebanTambahanKeluar',
-        ]);
+        ];
+
+        $query = Vcf::query()->with(
+            $request->boolean('with_detail')
+                ? array_merge($lightRelations, $detailRelations)
+                : $lightRelations
+        );
+
+        // Listing tabel tidak butuh kolom teks panjang (keterangan/catatan).
+        if (! $request->boolean('with_detail')) {
+            $query->select([
+                'id',
+                'nomor_urut',
+                'tanggal',
+                'produk',
+                'tipe_kegiatan',
+                'no_polisi',
+                'jenis_kendaraan_id',
+                'transporter_id',
+                'driver_id',
+                'jam_masuk',
+                'status',
+                'created_at',
+            ]);
+        }
 
         if ($request->filled('search')) {
             $like = $this->likeOperator();
@@ -83,53 +114,187 @@ class VcfBagian1Controller extends Controller
             });
         }
 
-        if ($request->has('tanggal')) {
+        // Catatan: gunakan filled() dan bukan has(). has('status') tetap true untuk
+        // "?status=" (string kosong) sehingga query jadi status = '' dan hasilnya kosong.
+        if ($request->filled('tanggal')) {
             $query->whereDate('tanggal', $request->tanggal);
-        } elseif ($request->has('tanggal_dari') && $request->has('tanggal_sampai')) {
+        } elseif ($request->filled('tanggal_dari') && $request->filled('tanggal_sampai')) {
             $query->whereBetween('tanggal', [$request->tanggal_dari, $request->tanggal_sampai]);
+        } elseif ($request->filled('tanggal_dari')) {
+            $query->whereDate('tanggal', '>=', $request->tanggal_dari);
+        } elseif ($request->filled('tanggal_sampai')) {
+            $query->whereDate('tanggal', '<=', $request->tanggal_sampai);
         } else {
             // Default: Tampilkan VCF aktif dari 7 hari terakhir
             // Truck yang registrasi hari sebelumnya tapi belum selesai tetap muncul untuk tracking
             $query->whereDate('tanggal', '>=', \Carbon\Carbon::now()->subDays(7)->toDateString());
         }
 
-        if ($request->has('status')) {
-            if ($request->status === 'aktif') {
-                $query->where('status', '!=', 'selesai');
-            } elseif ($request->status === 'reject') {
-                $query->where('status', 'reject');
-            } else {
-                $query->where('status', $request->status);
+        if ($request->boolean('only_blacklist')) {
+            $query->where(function ($q) {
+                $q->where('status', 'reject')
+                  ->orWhereHas('driver', function ($dq) {
+                      $dq->where('status', 'blacklist');
+                  })
+                  ->orWhere('keterangan', 'LIKE', '%[BLACKLIST]%')
+                  ->orWhere('catatan', 'LIKE', '%[BLACKLIST]%');
+            });
+        } else {
+            if ($request->filled('status')) {
+                if ($request->status === 'aktif') {
+                    $query->whereNotIn('status', ['selesai', 'reject']);
+                } elseif ($request->status === 'reject') {
+                    $query->where('status', 'reject');
+                } else {
+                    $query->where('status', $request->status);
+                }
             }
         }
 
+        // Filter multi-status: ?status_in=bagian1_selesai,bagian2_selesai,bagian3_selesai
+        // Dipakai halaman Operasional VCF supaya filtering tahap dilakukan di DB,
+        // bukan mengunduh seluruh baris lalu difilter di browser.
+        if ($request->filled('status_in')) {
+            $statuses = collect(explode(',', (string) $request->status_in))
+                ->map(fn ($s) => trim($s))
+                ->filter()
+                ->values()
+                ->all();
 
+            if (! empty($statuses)) {
+                $query->whereIn('status', $statuses);
+            }
+        }
 
-        if ($request->has('tipe_kegiatan')) {
+        if ($request->filled('tipe_kegiatan')) {
             $query->where('tipe_kegiatan', $request->tipe_kegiatan);
         }
 
-        if ($request->has('transporter_id')) {
+        if ($request->filled('transporter_id')) {
             $query->where('transporter_id', $request->transporter_id);
         }
 
-        if ($request->has('driver_id')) {
+        if ($request->filled('driver_id')) {
             $query->where('driver_id', $request->driver_id);
         }
 
+        // Batasi per_page supaya satu request tidak pernah menarik puluhan ribu baris.
+        $perPage = (int) $request->get('per_page', 15);
+        $perPage = max(1, min($perPage, 500));
+
         $data = $query->orderByDesc('tanggal')
             ->orderByDesc('created_at')
-            ->paginate($request->get('per_page', 15));
+            ->paginate($perPage);
 
         return response()->json($data);
     }
 
     /**
+     * Rekap jumlah VCF per bulan untuk satu tahun (halaman Arsip VCF).
+     *
+     * Menggantikan pola lama di frontend yang mengunduh SELURUH VCF setahun
+     * (per_page=10000, lengkap dengan semua relasi) hanya untuk menghitung
+     * angka pada 12 kartu bulan. Sekarang cukup satu query agregat.
+     */
+    public function monthlyStats(Request $request)
+    {
+        $year = (int) $request->get('year', date('Y'));
+
+        $rows = Vcf::query()
+            ->selectRaw($this->monthExpression() . ' AS bulan')
+            ->selectRaw('COUNT(*) AS total')
+            ->selectRaw("SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) AS selesai")
+            ->selectRaw("SUM(CASE WHEN status = 'reject' THEN 1 ELSE 0 END) AS reject")
+            ->whereYear('tanggal', $year)
+            ->groupByRaw($this->monthExpression())
+            ->get();
+
+        // Selalu kembalikan 12 bulan agar frontend tidak perlu mengisi celah.
+        $months = collect(range(1, 12))->mapWithKeys(fn ($m) => [
+            $m => ['bulan' => $m, 'total' => 0, 'selesai' => 0, 'reject' => 0],
+        ])->all();
+
+        foreach ($rows as $row) {
+            $m = (int) $row->bulan;
+            if (! isset($months[$m])) {
+                continue;
+            }
+            $months[$m] = [
+                'bulan'   => $m,
+                'total'   => (int) $row->total,
+                'selesai' => (int) $row->selesai,
+                'reject'  => (int) $row->reject,
+            ];
+        }
+
+        return response()->json([
+            'year' => $year,
+            'data' => array_values($months),
+        ]);
+    }
+
+    /**
+     * Rekap jumlah VCF per status untuk badge halaman Operasional VCF.
+     *
+     * Menghormati filter rentang tanggal + search yang sama dengan index(),
+     * sehingga angka badge konsisten dengan tabel di bawahnya.
+     */
+    public function operationalStats(Request $request)
+    {
+        $query = Vcf::query();
+
+        if ($request->filled('search')) {
+            $like = $this->likeOperator();
+            $search = '%' . $request->search . '%';
+            $query->where(function ($q) use ($search, $like) {
+                $q->where('nomor_urut', $like, $search)
+                    ->orWhere('no_polisi', $like, $search)
+                    ->orWhere('produk', $like, $search)
+                    ->orWhere('tipe_kegiatan', $like, $search)
+                    ->orWhere('status', $like, $search)
+                    ->orWhereHas('driver', function ($q) use ($search, $like) {
+                        $q->where('nama_supir', $like, $search)
+                            ->orWhere('no_sim', $like, $search);
+                    })
+                    ->orWhereHas('transporter', function ($q) use ($search, $like) {
+                        $q->where('nama_transporter', $like, $search);
+                    });
+            });
+        }
+
+        if ($request->filled('tanggal_dari') && $request->filled('tanggal_sampai')) {
+            $query->whereBetween('tanggal', [$request->tanggal_dari, $request->tanggal_sampai]);
+        }
+
+        $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+
+        $aktif = "status IN ('bagian1_selesai','bagian2_selesai','bagian3_selesai')";
+
+        $row = $query
+            ->selectRaw("SUM(CASE WHEN status = 'bagian1_selesai' THEN 1 ELSE 0 END) AS wb_masuk")
+            ->selectRaw("SUM(CASE WHEN status = 'bagian2_selesai' THEN 1 ELSE 0 END) AS wb_keluar")
+            ->selectRaw("SUM(CASE WHEN status = 'bagian3_selesai' THEN 1 ELSE 0 END) AS mg_keluar")
+            ->selectRaw("SUM(CASE WHEN {$aktif} AND tanggal = ? THEN 1 ELSE 0 END) AS hari_ini", [$today])
+            ->selectRaw("SUM(CASE WHEN {$aktif} AND tanggal < ? THEN 1 ELSE 0 END) AS ditunda", [$today])
+            ->first();
+
+        return response()->json([
+            'data' => [
+                'hari_ini'  => (int) ($row->hari_ini ?? 0),
+                'ditunda'   => (int) ($row->ditunda ?? 0),
+                'wb_masuk'  => (int) ($row->wb_masuk ?? 0),
+                'wb_keluar' => (int) ($row->wb_keluar ?? 0),
+                'mg_keluar' => (int) ($row->mg_keluar ?? 0),
+            ],
+        ]);
+    }
+
+    /**
      * Tolak VCF jika terjadi ketidaksesuaian pemeriksaan.
      */
-    public function reject(Request $request, int $id)
+    public function reject(Request $request, $id)
     {
-        $vcf = Vcf::findOrFail($id);
+        $id = (int) $id;
 
         // Hanya VCF yang belum selesai dan bukan sudah ditolak yang bisa ditolak
         if (in_array($vcf->status, ['selesai', 'reject'])) {
@@ -308,15 +473,21 @@ class VcfBagian1Controller extends Controller
             }
 
             $tanggalVcf = $validated['tanggal'];
-            $date = \Carbon\Carbon::parse($tanggalVcf);
+            try {
+                $date = \Carbon\Carbon::parse($tanggalVcf);
+            } catch (\Exception $e) {
+                $date = \Carbon\Carbon::now();
+            }
+
+            $startOfMonth = $date->copy()->startOfMonth()->toDateString();
+            $endOfMonth = $date->copy()->endOfMonth()->toDateString();
 
             // Nomor urut reset bulanan.
             /** @var \Illuminate\Database\Connection $connection */
             $connection = DB::connection();
             $castType = $connection->getDriverName() === 'pgsql' ? 'INTEGER' : 'UNSIGNED';
 
-            $maxNum = Vcf::whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
+            $maxNum = Vcf::whereBetween('tanggal', [$startOfMonth, $endOfMonth])
                 ->max(DB::raw("CAST(nomor_urut AS {$castType})"));
 
             $newNomorUrut = str_pad((int) $maxNum + 1, 5, '0', STR_PAD_LEFT);
@@ -436,16 +607,18 @@ class VcfBagian1Controller extends Controller
     /**
      * Detail lengkap satu VCF.
      */
-    public function show(int $id)
+    public function show($id)
     {
+        $id = (int) $id;
         return response()->json($this->loadVcfFull($id));
     }
 
     /**
      * Update Bagian 1 — hanya jika status masih 'bagian1_selesai' atau user adalah admin.
      */
-    public function update(Request $request, int $id)
+    public function update(Request $request, $id)
     {
+        $id = (int) $id;
         $vcf = Vcf::findOrFail($id);
 
         // Only admin can edit VCF at any stage. Petugas cannot edit if status is selesai/reject.
@@ -714,8 +887,9 @@ class VcfBagian1Controller extends Controller
     /**
      * Helper: load VCF dengan semua relasi.
      */
-    private function loadVcfFull(int $id): Vcf
+    private function loadVcfFull($id): Vcf
     {
+        $id = (int) $id;
         return Vcf::with([
             'jenisKendaraan',
             'transporter',

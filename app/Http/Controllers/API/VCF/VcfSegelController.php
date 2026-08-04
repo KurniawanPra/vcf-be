@@ -18,8 +18,9 @@ class VcfSegelController extends Controller
      * Simpan Segel Masuk — untuk Unloading, diinput saat WB Masuk (Bagian 2).
      * Bisa dipanggil bersamaan dengan Bagian 2, atau secara terpisah via endpoint ini.
      */
-    public function storeMasuk(Request $request, int $vcfId)
+    public function storeMasuk(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         // Boleh diupdate selama VCF belum selesai/ditolak
@@ -83,8 +84,9 @@ class VcfSegelController extends Controller
      * Simpan Segel Keluar — untuk Loading, diinput saat MG Keluar (Bagian 4).
      * Bisa dipanggil bersamaan dengan Bagian 4, atau secara terpisah via endpoint ini.
      */
-    public function storeKeluar(Request $request, int $vcfId)
+    public function storeKeluar(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         // Boleh diupdate selama VCF belum selesai/ditolak

@@ -15,8 +15,9 @@ class VcfBagian4Controller extends Controller
      * Simpan Bagian 4 — Jam Keluar & Emergency Respon Kontak.
      * VCF harus berstatus 'bagian3_selesai'.
      */
-    public function store(Request $request, int $vcfId)
+    public function store(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         if ($vcf->driver && $vcf->driver->status === 'blacklist') {
@@ -82,8 +83,9 @@ class VcfBagian4Controller extends Controller
     /**
      * Finalisasi VCF — Keluar Main Gate.
      */
-    public function finalize(Request $request, int $vcfId)
+    public function finalize(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         if ($vcf->driver && $vcf->driver->status === 'blacklist') {
@@ -121,8 +123,9 @@ class VcfBagian4Controller extends Controller
      * Update Bagian 4 — hanya jika status 'selesai' dan ada kebutuhan koreksi.
      * Hanya admin yang bisa (dikontrol di route level).
      */
-    public function update(Request $request, int $vcfId)
+    public function update(Request $request, $vcfId)
     {
+        $vcfId = (int) $vcfId;
         $vcf = Vcf::findOrFail($vcfId);
 
         if ($vcf->driver && $vcf->driver->status === 'blacklist') {
@@ -163,8 +166,9 @@ class VcfBagian4Controller extends Controller
         ]);
     }
 
-    public function show(int $vcfId)
+    public function show($vcfId)
     {
+        $vcfId = (int) $vcfId;
         Vcf::findOrFail($vcfId);
 
         $keluar = VcfKeluar::with('petugas:id,nama')

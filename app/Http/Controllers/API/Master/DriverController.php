@@ -32,18 +32,58 @@ class DriverController extends Controller
                 $query->where('is_active', $request->boolean('is_active'));
             }
 
-            $data = $query->orderBy('nama_supir', 'asc')->get();
+            // Filter status pelanggaran: normal | warning | blacklist.
+            // Dipakai modal "Supir Normal/Warning" pada halaman Master Data — Supir.
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            $query->orderBy('nama_supir', 'asc');
+
+            // Tetap kembalikan bentuk { data: [...] } agar pemanggil lama tidak berubah.
+            // Bila per_page dikirim, gunakan pagination Laravel (bentuk respons tetap
+            // punya key "data", ditambah total/last_page untuk komponen Pagination).
+            if ($request->filled('per_page')) {
+                $perPage = max(1, min((int) $request->per_page, 200));
+                return response()->json($query->paginate($perPage), 200);
+            }
+
+            $data = $query->get();
 
             return response()->json(['data' => $data, 'message' => 'Success to Fetch All Datas'], 200);
 
         } catch (QueryException $e) {
             return response()->json([
                 'message' => 'Something went wrong',
-                'err'     => $e->getTrace()[0],
                 'errMsg'  => $e->getMessage(),
                 'success' => false,
             ], 500);
         }
+    }
+
+    /**
+     * Rekap jumlah supir per status pelanggaran (normal / warning / blacklist).
+     * Dipakai 3 kartu statistik pada halaman Master Data — Supir.
+     */
+    public function stats()
+    {
+        $counts = Driver::query()
+            ->selectRaw('status, COUNT(*) AS total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $normal    = (int) ($counts['normal'] ?? 0);
+        $warning   = (int) ($counts['warning'] ?? 0);
+        $blacklist = (int) ($counts['blacklist'] ?? 0);
+
+        return response()->json([
+            'data' => [
+                'normal'    => $normal,
+                'warning'   => $warning,
+                'blacklist' => $blacklist,
+                'total'     => $normal + $warning + $blacklist,
+            ],
+        ]);
     }
 
     public function store(Request $request)

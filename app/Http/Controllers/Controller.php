@@ -28,4 +28,23 @@ class Controller extends BaseController
     {
         return \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
     }
+
+    /**
+     * Get a database-agnostic SQL expression that extracts the month number
+     * from a date column. Used by aggregate/report queries grouped per month.
+     */
+    protected function monthExpression(string $column = 'tanggal'): string
+    {
+        $driver = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            return "EXTRACT(MONTH FROM {$column})";
+        }
+
+        if ($driver === 'sqlite') {
+            return "CAST(strftime('%m', {$column}) AS INTEGER)";
+        }
+
+        return "MONTH({$column})";
+    }
 }
