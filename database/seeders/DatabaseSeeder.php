@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             MasterDataSeeder::class,
             SettingsSeeder::class,
-            // VcfTransactionSeeder::class, // Disabled - uses outdated table names
+            VcfTransactionSeeder::class,
         ]);
     }
 }
