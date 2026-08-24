@@ -1,0 +1,167 @@
+<?php
+
+namespace App\Http\Controllers\API\Master;
+
+use App\Http\Controllers\Controller;
+use App\Models\Driver;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
+
+class DriverController extends Controller
+{
+    public function index(Request $request)
+    {
+        try {
+            $query = Driver::query();
+
+            if ($request->filled('search')) {
+                $like = $this->likeOperator();
+                $query->where(function ($q) use ($request, $like) {
+                    $q->where('nama_supir', $like, '%' . $request->search . '%')
+                      ->orWhere('no_sim', $like, '%' . $request->search . '%');
+                });
+            }
+
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+            }
+
+            if ($request->filled('is_active')) {
+                $query->where('is_active', $request->boolean('is_active'));
+            }
+
+            // Filter status pelanggaran: normal | warning | blacklist.
+            // Dipakai modal "Supir Normal/Warning" pada halaman Master Data — Supir.
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            $query->orderBy('nama_supir', 'asc');
+
+            // Tetap kembalikan bentuk { data: [...] } agar pemanggil lama tidak berubah.
+            // Bila per_page dikirim, gunakan pagination Laravel (bentuk respons tetap
+            // punya key "data", ditambah total/last_page untuk komponen Pagination).
+            if ($request->filled('per_page')) {
+                $perPage = max(1, min((int) $request->per_page, 200));
+                return response()->json($query->paginate($perPage), 200);
+            }
+
+            $data = $query->get();
+
+            return response()->json(['data' => $data, 'message' => 'Success to Fetch All Datas'], 200);
+
+        } catch (QueryException $e) {
+            return response()->json([
+                'message' => 'Something went wrong',
+                'errMsg'  => $e->getMessage(),
+                'success' => false,
+            ], 500);
+        }
+    }
+
+    /**
+     * Rekap jumlah supir per status pelanggaran (normal / warning / blacklist).
+     * Dipakai 3 kartu statistik pada halaman Master Data — Supir.
+     */
+    public function stats()
+    {
+        $counts = Driver::query()
+            ->selectRaw('status, COUNT(*) AS total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $normal    = (int) ($counts['normal'] ?? 0);
+        $warning   = (int) ($counts['warning'] ?? 0);
+        $blacklist = (int) ($counts['blacklist'] ?? 0);
+
+        return response()->json([
+            'data' => [
+                'normal'    => $normal,
+                'warning'   => $warning,
+                'blacklist' => $blacklist,
+                'total'     => $normal + $warning + $blacklist,
+            ],
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $validated = $request->validate([
+                'nama_supir'      => 'required|string|max:255',
+                'no_sim'          => 'required|string|max:50|unique:drivers,no_sim',
+                'jenis_sim'       => 'required|string|max:20',
+                'tgl_berlaku_sim' => 'required|date',
+                'is_active'       => 'boolean',
+            ]);
+
+            $driver = Driver::create($validated);
+            DB::commit();
+            return response()->json([
+                'message' => 'Supir berhasil ditambahkan.',
+                'data'    => $driver,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollback();
+            if ($e instanceof \Illuminate\Validation\ValidationException) throw $e;
+            return response()->json([
+                'message' => 'Something went wrong',
+                'errMsg'  => $e->getMessage(),
+                'success' => false,
+            ], 500);
+        }
+    }
+
+    public function show(Driver $driver)
+    {
+        return response()->json($driver);
+    }
+
+    public function update(Request $request, Driver $driver)
+    {
+        DB::beginTransaction();
+        try {
+            $validated = $request->validate([
+                'nama_supir'      => 'sometimes|required|string|max:255',
+                'no_sim'          => 'sometimes|required|string|max:50|unique:drivers,no_sim,' . $driver->id,
+                'jenis_sim'       => 'sometimes|required|string|max:20',
+                'tgl_berlaku_sim' => 'sometimes|required|date',
+                'is_active'       => 'boolean',
+            ]);
+
+            $driver->update($validated);
+            DB::commit();
+            return response()->json([
+                'message' => 'Supir berhasil diperbarui.',
+                'data'    => $driver,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            if ($e instanceof \Illuminate\Validation\ValidationException) throw $e;
+            return response()->json([
+                'message' => 'Something went wrong',
+                'errMsg'  => $e->getMessage(),
+                'success' => false,
+            ], 500);
+        }
+    }
+
+    public function destroy(Driver $driver)
+    {
+        try {
+            $label = $driver->nama_supir;
+            $driver->delete();
+            return response()->json(['message' => 'Supir berhasil dihapus secara permanen.']);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'Data tidak dapat dihapus karena sudah digunakan dalam transaksi VCF.',
+                ], 422);
+            }
+            throw $e;
+        }
+    }
+}

@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: vcf-api
+    runtime: docker
+    region: singapore
+    plan: standard
+    
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: LOG_CHANNEL
+        value: errorlog
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_PORT
+        value: 5432
+      # Database connection settings
+      - key: DB_HOST
+        fromDatabase:
+          name: vcf-db
+          property: host
+      - key: DB_USERNAME
+        fromDatabase:
+          name: vcf-db
+          property: username
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: vcf-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: vcf-db
+          property: database
+      - key: APP_KEY
+        sync: false
+      # Add your APP_KEY here or generate via: php artisan key:generate
+
+databases:
+  - name: vcf-db
+    databaseName: vcf_production
+    user: vcf_user
+    region: singapore
